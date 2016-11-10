@@ -7,21 +7,29 @@ import os, time, sys
 from timeit import default_timer
 import warnings
 
+import glob
+
 from random import shuffle
 from collections import namedtuple, OrderedDict
 import numpy as np
+import random
 import re
 import multiprocessing
 
-import wikipedia as wiki
+#import wikipedia as wiki
 #from gensim.models import doc2vec
 import gensim
 from gensim.test.test_doc2vec import ConcatenatedDoc2Vec
 
 import pdb
 
-data_file = './data/wiki.txt'
-Document = namedtuple('Document', 'topic doc_no words tags')
+data_dir = '../crawl_news/data/zing/'
+model_file = 'vn_vec.model'
+train_percent = 0.6
+valid_percent = 0.2
+test_percent = 0.2
+
+Document = namedtuple('Document', 'url topic doc_no words tags')
 
 # Convert text to lower-case and strip punctuation/symbols from words
 def normalize_text(text):
@@ -39,44 +47,34 @@ def normalize_text(text):
     norm_text = re.sub(' +', ' ', norm_text)    
     return norm_text
 
-def crawl_wiki():
-    if os.path.isfile(data_file):
-        #print('Using data from', data_file)	
-        warnings.warn('Using data from: ' + data_file)	
-        return
-    f_triplets = './corpora/wikipedia/wikipedia-hand-triplets-release.txt'
-    topic = ''
-    topic_count = -1
-    page_count = -1
-    titles = []
-    with open(data_file, 'w') as fw:
-        with open(f_triplets) as f:
-            for line in f:
-                line = line.strip()
-                if line.startswith('#'):
-                    topic = line[2:]
-                    topic_count += 1
-                    page_count = -1
+def read_corpus(from_percent, to_percent):
+    corpus = []
+    topic_id = -1
+    doc_id = -1
+    doc_count = -1
+    for filename in glob.iglob(data_dir + '*.tsv'):
+        topic_id += 1
+        doc_count = -1
+        with open(filename) as f:
+            #print('{}\t{}'.format(topic_id, os.path.basename(filename)))
+            #TODO seek to the right part for reading
+            docs = f.readlines()
+            doc_len = float(len(docs))
+            for doc in docs:
+                doc_count +=1
+                percent = (doc_count+1)/doc_len
+                if percent>=to_percent:
+                    break
+                if percent<from_percent:
                     continue
-                #if topic_count>2:
-                    #break
-                urls = line.split()[0:2]#the last url is not in the topic; not correct
-                for url in urls:
-                    title = url[url.rindex('/')+1:].replace('_', ' ').lower()
-                    if title in titles:
-                        print('---repeat: ' + url)    
-                        continue
-                    print('...get url: ' + url)
-                    page_count +=1
-                    titles.append(title)
-                    try:
-                        page = wiki.page(title)
-                        text = page.content
-                    except:
-                        print('xxxCant read from wiki')
-                        continue
-                    text = normalize_text(text)
-                    fw.write('%d\t%d\t%s\n'%(topic_count, page_count, text))
+
+                doc_id += 1
+                parts = doc.split('\t')
+                words = ' '.join(part.strip() for part in parts[1:])
+                #words = gensim.utils.to_unicode(words).split()
+                #pdb.set_trace()
+                corpus.append(Document(parts[0], topic_id, doc_count, words, [doc_id]))
+    return corpus
 
 def read_data():
     docs = []
@@ -111,30 +109,36 @@ def plot_with_labels(low_dim_embs, labels, filename='tsne.png'):
 
 def plot_with_color(low_dim_embs, labels, classes, filename='tsne.png'):
     assert low_dim_embs.shape[0] >= len(labels), "More labels than embeddings"
-    #plt.figure(figsize=(18, 18))  #in inches
-    colors = cm.rainbow(np.linspace(0, 1, len(set(classes))))
+    plt.figure(figsize=(18, 18))  #in inches
+    unique_classes = list(set(classes))
+    colors = cm.rainbow(np.linspace(0, 1, len(unique_classes)))
     for i, label in enumerate(labels):
         x, y = low_dim_embs[i,:]
-        plt.scatter(x, y, color=colors[classes[i]])
+        plt.scatter(x, y, color=colors[unique_classes.index(classes[i])])
         plt.annotate(label,
                  xy=(x, y),
                  xytext=(5, 2),
                  textcoords='offset points',
                  ha='right',
                  va='bottom')
-    #plt.savefig(filename + '.png')
-    plt.show()
+    plt.savefig(filename + '.png')
+    #plt.show()
 
-def visualize(docvecs, docs, filename):
+def visualize(docvecs, docs, filename, plot_only=None):
     tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
-    #pdb.set_trace()
+    if plot_only is not None:
+        ids  = random.sample(range(0, len(docvecs)), plot_only)
+        docvecs = docvecs[ids]
+        docs = [docs[i] for i in ids]
     try:
         low_dim_embs = tsne.fit_transform(docvecs)
     except:
         print('!!!Cant reduce the docvecs dementions:', sys.exc_info())
         return
 
-    labels = [str(doc.topic) + '.' + str(doc.doc_no) for doc in docs]
+    #labels = [str(doc.topic) + '.' + str(doc.doc_no) for doc in docs]
+    #labels = [str(doc.topic) + '.' + str(doc.tags[0]) for doc in docs]
+    labels = [str(doc.topic) for doc in docs]
     classes = [doc.topic for doc in docs]
     
     #plot_with_labels(low_dim_embs, labels) 
@@ -211,29 +215,50 @@ def train_models(docs, passes):
         alpha -= alpha_delta
 
 def debug(docs):
-    model = gensim.models.Doc2Vec(docs, size=100, window=8, min_count=5, workers=4)
+
     shuffle(docs)
-    visualize(model.docvecs, docs, 'dm_with_docs')
-    return
+    #model = gensim.models.Doc2Vec(docs, size=100, window=8, min_count=5, workers=4)
+    model = gensim.models.Doc2Vec(docs, size=100, window=8, min_count=5, workers=4)
+    #visualize(model.docvecs, docs, 'dm_with_docs')
+    #return
     for i in range (10):
-        #shuffle(docs)
+        shuffle(docs)
+        print('-----pass = {}'.format(i))
         model.train(docs)
-    visualize(model.docvecs, docs, 'dm_with_docs' + str(i))
+        if i%3==0:
+            visualize(model.docvecs, docs, 'dm_with_docs' + str(i), 500)
+    return model
 
-    
+def train(corpus, model_file):
+    #'''
+    if os.path.isfile(model_file):
+        warnings.warn('Load trained model from: ' + model_file)
+        model = gensim.models.doc2vec.Doc2Vec.load(model_file)
+        return model
+    #'''
+
+    model = gensim.models.doc2vec.Doc2Vec(corpus, size=100, window=8, min_count=5, workers=4)
+    print('---------save model to file {}'.format(model_file))
+    model.save(model_file)
+    return model
+
 def main():
-    crawl_wiki()
-    #read_data()
-    docs = read_data()
+    with elapsed_timer() as elapsed:
+        corpus = read_corpus(0, train_percent)
+        print('------read train data (%d docs) in %0.1fs'%(len(corpus), elapsed()))
+        model = train(corpus, model_file)
+        #model = debug(corpus)
+        #model = gensim.models.doc2vec.Doc2Vec(corpus, size=100, window=8, min_count=5, workers=4)
+        print('------build model in %0.1fs'%elapsed())
+        visualize(model.docvecs, corpus, 'vndocvec_word_level', 500)
 
-    #model = doc2vec.Doc2Vec(docs, size=100, window=8, min_count=5, workers=4)
     #print('---default model')
     #model = gensim.models.Doc2Vec(docs, size=100, window=8, min_count=5, workers=4)
-    #visualize(model.docvecs, docs, 'dm_with_docs')
 
-    debug(docs)
+    #debug(docs)
     #train_models(docs, 10)
-    print('DONE')
+    print('DONE in %.1f'%elapsed())
+    pdb.set_trace()
 
 if __name__=='__main__':
     main()
