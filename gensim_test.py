@@ -109,7 +109,7 @@ def plot_with_labels(low_dim_embs, labels, filename='tsne.png'):
 
 def plot_with_color(low_dim_embs, labels, classes, filename='tsne.png'):
     assert low_dim_embs.shape[0] >= len(labels), "More labels than embeddings"
-    plt.figure(figsize=(18, 18))  #in inches
+    #plt.figure(figsize=(18, 18))  #in inches
     unique_classes = list(set(classes))
     colors = cm.rainbow(np.linspace(0, 1, len(unique_classes)))
     for i, label in enumerate(labels):
@@ -121,8 +121,8 @@ def plot_with_color(low_dim_embs, labels, classes, filename='tsne.png'):
                  textcoords='offset points',
                  ha='right',
                  va='bottom')
-    plt.savefig(filename + '.png')
-    #plt.show()
+    #plt.savefig(filename + '.png')
+    plt.show()
 
 def visualize(docvecs, docs, filename, plot_only=None):
     tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
