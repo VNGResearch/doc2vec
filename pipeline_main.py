@@ -64,6 +64,8 @@ class Doc2Vec(Step):
         
         self.model = gensim.models.Doc2Vec(size=self.size, window=self.window, min_count=min_count, workers=4, dm_mean=dm_mean, dm_concat=dm_concat)
 
+        pdb.set_trace()
+
     def load(self):
         model_file = self.auto_name()
         if os.path.isfile(model_file):
@@ -310,7 +312,7 @@ token_type = 'char'#word, vn_token
 model_dir = './models/'
 
 
-def main():
+def pipeline_call():
     pipeline = make_pipeline()
     train_docs = read_corpus(data_dir, 0, train_percent)
     #pdb.set_trace()
@@ -333,14 +335,9 @@ def gridsearch_call():
     print('DONE')
     pdb.set_trace()
 
-def try_experiments():
-
-    
-
 def main():
-    #pipeline_call()
+    pipeline_call()
     #gridsearch_call()
-    try_experiments()
 
 if __name__=='__main__':
     main()

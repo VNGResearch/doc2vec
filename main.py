@@ -20,6 +20,7 @@ import random, numpy as np
 import os, glob
 import gensim
 import re
+import pickle
 
 #from config import config
 
@@ -32,27 +33,8 @@ class Log(object):
     def info(sender, message):
         print('---INFO: ', sender, message, sep='\t')
 
-class Step(BaseEstimator):
-    def __init__(self):
-        super(Step, self).__init__()
-
-    def fit(self, X, Y, *args, **kwargs):
-        warnings.warn('!!!call to DefaultStep.fit from ' + self.__class__.__name__)
-        return self
-
-    def transform(self, X, *args, **kwargs):
-        warnings.warn('!!!call to DefaultStep.transform from ' + self.__class__.__name__)
-        return X
-
-    def predict(self, X):
-        warnings.warn('!!!call to DefaultStep.predict from ' + self.__class__.__name__)
-        #return selfi
-
-class Doc2Vec(Step):
-    
+class Doc2Vec(object):
     def __init__(self, dm=1, size=100, window=8, min_count=5, passes=1, batch_size=0, shuffle=False, dm_mean=0, dm_concat=0):
-        super(Doc2Vec, self).__init__()
-
         self.dm = dm
         self.size = size
         self.window = window
@@ -62,18 +44,21 @@ class Doc2Vec(Step):
         self.shuffle = shuffle
         self.batch_size = batch_size
         
-        self.model = gensim.models.Doc2Vec(size=self.size, window=self.window, min_count=min_count, workers=4, dm_mean=dm_mean, dm_concat=dm_concat)
+        self.model = gensim.models.Doc2Vec(dm=dm, size=self.size, window=self.window, min_count=min_count, workers=4, dm_mean=dm_mean, dm_concat=dm_concat)
+
+        self.doc_infos = {}
 
     def load(self):
         model_file = self.auto_name()
         if os.path.isfile(model_file):
             warnings.warn('Load trained model from: ' + model_file)
+            self.doc_infos = self.load_docinfo()#TODO the code is not reall logic
             return gensim.models.doc2vec.Doc2Vec.load(model_file)
 
     def plot_with_color(self, low_dim_embs, labels, classes, filename='tsne.png'):
         assert low_dim_embs.shape[0] >= len(labels), "More labels than embeddings"
         Log.info(self, 'Start drawing...')
-        #plt.figure(figsize=(18, 18))  #in inches
+        plt.figure(figsize=(18, 18))  #in inches
         unique_classes = list(set(classes))
         colors = cm.rainbow(np.linspace(0, 1, len(unique_classes)))
         for i, label in enumerate(labels):
@@ -85,9 +70,9 @@ class Doc2Vec(Step):
                      textcoords='offset points',
                      ha='right',
                      va='bottom')
-        #plt.savefig(filename + '.png')
-        Log.info(self, '######showing...')
-        plt.show()
+        plt.savefig(filename + '.png')
+        #Log.info(self, '######showing...')
+        #plt.show()
 
     def visualize(self, docvecs, docs, filename, plot_only=None):
         Log.info(self, 'Start reduce docvec dimention')
@@ -110,14 +95,13 @@ class Doc2Vec(Step):
         #plot_with_labels(low_dim_embs, labels) 
         self.plot_with_color(low_dim_embs, labels, classes, filename)
 
-    def fit(self, X, *args, **kwargs):
+    def train(self, X, *args, **kwargs):
         '''Train doc2vec model.
 
         Args:
             X: Document iterator.
         '''
-        print('docvec.fit')
-        #pdb.set_trace()
+        Log.info(self, '======Training doc2vec model====')
         model = self.load()
         if model is not None:
             self.model = model
@@ -131,6 +115,9 @@ class Doc2Vec(Step):
             Log.info(self, '==========pass num{}'.format(rep))
             corpus = []
             for doc in X:
+                if rep==0 and doc.tags[0] not in self.doc_infos:#training doc information
+                    self.doc_infos[doc.tags[0]]= (doc.doc_no, doc.tags, doc.topic_id, doc.topic, doc.url)
+
                 corpus.append(doc)
                 if self.batch_size > 0 and len(corpus)>=self.batch_size:
                     if self.shuffle:
@@ -139,15 +126,32 @@ class Doc2Vec(Step):
                     Log.info(self, '---train a mini-batch')
             if len(corpus) !=0:
                 Log.info(self, '---train the last')
-                self.model.train(corpus) 
-        self.model.save(self.auto_name())
+                #self.model.train(corpus)
 
-        self.visualize(self.model.docvecs, corpus, 'new_code',500) 
-        pdb.set_trace() 
+        self.model.save(self.auto_name())
+        self.save_docinfo()
+
+        self.visualize(self.model.docvecs, corpus, self.auto_name(),500) 
         return self
 
+    def load_docinfo(self):
+        fname = self.auto_name() + '.info'
+        with open(fname, 'rb') as f:
+            return pickle.load(f)
+
+    def save_docinfo(self):
+        fname = self.auto_name() + '.info'
+        with open(fname, 'wb') as f:
+            pickle.dump(self.doc_infos, f)#protocl 0 default-text-based; binary mode for1,2,-1, HIGHGEST PROTOCOL is normal???
+
     def auto_name(self):
-        return os.path.join(model_dir, re.sub('[\W_]+', '.', str(self.model)).lower() + 'model')
+        return os.path.join(model_dir, token_type + '.' + re.sub('[\W_]+', '.', str(self.model)).lower() + 'model')
+
+    def infer_docvec(self, words):
+        return self.model.infer_vector(words)
+
+    def most_similar(self, docvec, topn = 10):
+        return self.model.docvecs.most_similar(positive=[docvec], topn=topn) 
 
     def transform(self, X, *args, **kwargs):
         #X = np.zeros(shape=(num, self._vector_size))
@@ -167,60 +171,50 @@ class Doc2Vec(Step):
         #pdb.set_trace()
         return np.array(data), target, infos, self.model
 
-    def predict(self, X):
-        '''Never been used.'''
-        return self.transofrm(X)
-
-
-class KNN(Step):
-    def __init__(self, k=10):
+class KNN(object):
+    def __init__(self, doc2vec, k=10):
         self.K = k
-        self._correct = -1
-
-    def fit(self, X, Y, *args, **kwargs):
-        print('knn.fit')
-        self.get_data(X)
-
-    def get_data(self, X):
-        self.data = X[0]
-        self.target = X[1]
-        self.infos = X[2]
-        self.model = X[3]
+        self.doc2vec = doc2vec
 
     def classify_by_count(self, sim_docs):
         count = defaultdict(int)
         ret_cat = -1
         max_count = -1
         for doc in sim_docs:
-            cat_id = self.infos[doc[0]][2]
+            cat_id = self.doc2vec.doc_infos[doc[0]][2]
             count[cat_id] +=1
             if count[cat_id]>max_count:
                 ret_cat = cat_id
                 max_count = count[cat_id]
         return ret_cat
 
-    def predict(self, X):
-        data, target, infos, model = X 
-        print('call predict predict')
-        self._correct = 0
-        wrong_list = []
-        for i, doc_vec in enumerate(data):
-            sim_docs = self.model.docvecs.most_similar([doc_vec], topn=self.K)
-            cat_id = self.classify_by_count(sim_docs)
-            if cat_id == infos[i][2]:
-                self._correct +=1
-            else:
-                wrong_list.append(i)
-                #pdb.set_trace()
-        self._score = self._correct*100 / float(len(infos))
-        print('****score= {}%'.format(self._score))
-        pdb.set_trace()
+    def predict(self, doc_words):
+        '''Predict category for each document in X.
+        Args:
+            doc_words: a list of words in a document
+        '''
+        docvec = self.doc2vec.infer_docvec(doc_words)
+        sim_docs = self.doc2vec.most_similar(docvec, topn=self.K)
+        return self.classify_by_count(sim_docs)
 
-    def score(self):
-        return self._score
+    def score(self, X):
+        '''Score a corpus.
+        Args:
+            X: Document object iterator.
+        '''
+        Log.info(self, '======Score category classification with KNN====')
+        correct = 0 
+        total = 0
+        for doc in X:
+            cat_id = self.predict(doc.words)
+            total += 1
+            if cat_id == doc.topic_id:
+                correct +=1
+            
+        return correct/float(total)
        
 #template class for build a fitable classification
-class PredictCategory(Step):
+class PredictCategory(object):
     def __init__(self):
         pass
 
@@ -278,30 +272,7 @@ def read_corpus(data_dir, from_percent, to_percent):
                 yield Document(parts[0], topic_id, doc_count, words, [doc_id], os.path.basename(filename))
     #return corpus
 
-def make_pipeline():
-    #read data
-    #train modeli with different params
-    #read valid data
-    #
-    chain = [('doc2vec', Doc2Vec()),
-            ('predict', KNN()),
-        ]
-
-    pline = Pipeline(chain)
-    return pline
-
-def search_params():
-    params = {
-        'doc2vec__dm': (0, 1),
-        #'doc2vec__size': (100, 250, 500),
-        #'doc2vec__window': (3, 5, 8, 10, 15),
-        #'doc2vec__mean': (0, 1),
-        #'doc2vec__concat': (0, 1),
-        #'doc2vec__min_count': (5, 10, 20, 30), 
-    }
-    return params
-
-#global configuration
+#============global configuration
 data_dir = '../crawl_news/data/zing/'
 train_percent = 0.6
 valid_percent = 0.2
@@ -309,6 +280,14 @@ test_percent = 0.2
 token_type = 'char'#word, vn_token
 model_dir = './models/'
 
+params = {
+    'dm': (0, 1),
+    'size': (100, 250, 500),
+    'window': (3, 5, 8, 10, 15),
+    'mean': (0, 1),
+    'concat': (0, 1),
+    'min_count': (5, 10, 30, 100), 
+}
 
 def main():
     pipeline = make_pipeline()
@@ -323,24 +302,24 @@ def main():
     print('DONE')
     pdb.set_trace()
 
-def gridsearch_call():
-    pipeline = make_pipeline()
+def run1():
     train_docs = read_corpus(data_dir, 0, train_percent)
     
-    grid_search = GridSearchCV(pipeline, search_params(), verbose=1)
-    grid_search.fit(train_docs)
-
+    for dm in params['dm']:
+        for size in params['size']:
+            for window in params['window']:
+                for mean in params['mean']:
+                    for concat in params['concat']:
+                        for min_count in params['min_count']:
+                            doc2vec = Doc2Vec(dm=dm)
+                            doc2vec.train(train_docs)
+                            knn = KNN(doc2vec)
+                            acc = knn.score(train_docs)
+                            print('!!RESULT!!====dm={},size={},window={},mean={},concat={},min_count={},acc={}'.format(dm, size, window, mean, concat,min_count, acc))
     print('DONE')
-    pdb.set_trace()
-
-def try_experiments():
-
-    
 
 def main():
-    #pipeline_call()
-    #gridsearch_call()
-    try_experiments()
+    run1()
 
 if __name__=='__main__':
     main()
