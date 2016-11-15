@@ -1,3 +1,8 @@
+'''---------Notes for complete---------------------
+- try with different parameters, setting
+- save each these setting into a model file.
+
+'''
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -45,7 +50,7 @@ class Step(BaseEstimator):
 
 class Doc2Vec(Step):
     
-    def __init__(self, dm=1, size=100, window=8, min_count=5, passes=1, batch_size=0, shuffle=False):
+    def __init__(self, dm=1, size=100, window=8, min_count=5, passes=1, batch_size=0, shuffle=False, dm_mean=0, dm_concat=0):
         super(Doc2Vec, self).__init__()
 
         self.dm = dm
@@ -57,7 +62,7 @@ class Doc2Vec(Step):
         self.shuffle = shuffle
         self.batch_size = batch_size
         
-        self.model = gensim.models.Doc2Vec(size = self.size, window = self.window, min_count = min_count, workers = 4)
+        self.model = gensim.models.Doc2Vec(size=self.size, window=self.window, min_count=min_count, workers=4, dm_mean=dm_mean, dm_concat=dm_concat)
 
     def load(self):
         model_file = self.auto_name()
@@ -286,7 +291,15 @@ def make_pipeline():
     return pline
 
 def search_params():
-    pass 
+    params = {
+        'doc2vec__dm': (0, 1),
+        #'doc2vec__size': (100, 250, 500),
+        #'doc2vec__window': (3, 5, 8, 10, 15),
+        #'doc2vec__mean': (0, 1),
+        #'doc2vec__concat': (0, 1),
+        #'doc2vec__min_count': (5, 10, 20, 30), 
+    }
+    return params
 
 #global configuration
 data_dir = '../crawl_news/data/zing/'
@@ -309,6 +322,25 @@ def main():
     pipeline.predict(train_docs)
     print('DONE')
     pdb.set_trace()
+
+def gridsearch_call():
+    pipeline = make_pipeline()
+    train_docs = read_corpus(data_dir, 0, train_percent)
+    
+    grid_search = GridSearchCV(pipeline, search_params(), verbose=1)
+    grid_search.fit(train_docs)
+
+    print('DONE')
+    pdb.set_trace()
+
+def try_experiments():
+
+    
+
+def main():
+    #pipeline_call()
+    #gridsearch_call()
+    try_experiments()
 
 if __name__=='__main__':
     main()
