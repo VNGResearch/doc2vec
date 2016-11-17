@@ -266,16 +266,16 @@ class MultipClassifiers(Classifier):
     def __init__(self, doc2vec):
         super(MultipClassifiers, self).__init__(doc2vec)
         self.classifiers = [
-            KNeighborsClassifier(3),
-            SVC(kernel="linear", C=0.025),
+            #KNeighborsClassifier(3),
+            #SVC(kernel="linear", C=0.025),
             SVC(gamma=2, C=1),
-            GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True),
-            DecisionTreeClassifier(max_depth=5),
-            RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-            MLPClassifier(alpha=1),
-            AdaBoostClassifier(),
-            GaussianNB(),
-            QuadraticDiscriminantAnalysis()
+            #GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True),
+            #DecisionTreeClassifier(max_depth=5),
+            #RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+            #MLPClassifier(alpha=1),
+            #AdaBoostClassifier(),
+            #GaussianNB(),
+            #QuadraticDiscriminantAnalysis()
             ]
 
     def get_data(self, train_docs):
@@ -293,6 +293,7 @@ class MultipClassifiers(Classifier):
 
     def fit(self, train_docs):
         X, y, infos = self.get_data(train_docs)
+        #Log.info(self, 'Train size ' + str(len(y)))
         X = StandardScaler().fit_transform(X)
         for cls in self.classifiers:
             Log.info(self, 'fit ' + cls.__class__.__name__)
@@ -310,8 +311,20 @@ class MultipClassifiers(Classifier):
             pres.append((cls.__class__.__name__, cls.predict(x)[0]))
         return pres
 
+    def score(self, test_docs):
+        X, y, infos = self.get_data(test_docs)
+        #Log.info(self, 'Test size ' + str(len(y)))
+        X = StandardScaler().fit_transform(X)
+        Log.info(self, '======Score category classification====')
+        correct = defaultdict(int) 
+        total = len(y)
+        for cls in self.classifiers:
+            Log.info(self, 'score ' + cls.__class__.__name__)
+            pres = cls.predict(X)
+            correct[cls.__class__.__name__] = sum(pres==y)/float(total)
+        return correct 
         
-    def score(self, train_docs):
+    def score2(self, train_docs):
         Log.info(self, '======Score category classification====')
         correct = defaultdict(int) 
         total = 0
@@ -353,7 +366,7 @@ def read_corpus(data_dir, from_percent, to_percent):
             doc_len = float(len(docs))
             for doc in docs:
                 doc_count +=1
-                percent = (doc_count+1)/doc_len
+                percent = (doc_count+1)/float(doc_len)
                 if percent>=to_percent:
                     break
                 if percent<from_percent:
@@ -420,14 +433,15 @@ def run1():
 
 def run2():
     train_docs = read_corpus(data_dir, 0, train_percent)
-
     doc2vec = Doc2Vec()
     doc2vec.train(train_docs)
     
     cls = MultipClassifiers(doc2vec)
     cls.fit(train_docs)
-    #accs = cls.score(train_docs)
-    #print(accs)
+
+    test_docs = read_corpus(data_dir, train_percent, 1.0)
+    accs = cls.score(test_docs)
+    print(accs)
     print('Done')
     pdb.set_trace()
 
