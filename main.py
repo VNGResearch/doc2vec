@@ -1,6 +1,6 @@
 '''---------Notes for complete---------------------
-- try with different parameters, setting
-- save each these setting into a model file.
+- try different classifier
+- try other approaches: rnn, bag-of-words, baiesian
 
 '''
 from __future__ import absolute_import
@@ -22,6 +22,17 @@ import gensim
 import re
 import pickle
 
+from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+from sklearn.preprocessing import StandardScaler
+
 #from config import config
 
 import pdb
@@ -32,6 +43,9 @@ class Log(object):
     @staticmethod
     def info(sender, message):
         print('---INFO: ', sender, message, sep='\t')
+
+    def warn(sender, message):
+        print('---WARN: ', sender, message, sep='\t')
 
 class Doc2Vec(object):
     def __init__(self, dm=1, size=100, window=8, min_count=5, passes=1, batch_size=0, shuffle=False, dm_mean=0, dm_concat=0):
@@ -106,6 +120,7 @@ class Doc2Vec(object):
         '''
         Log.info(self, '======Training doc2vec model====')
         model = self.load()
+
         if model is not None:
             self.model = model
             return self
@@ -156,23 +171,41 @@ class Doc2Vec(object):
     def most_similar(self, docvec, topn = 10):
         return self.model.docvecs.most_similar(positive=[docvec], topn=topn) 
 
-    def transform(self, X, *args, **kwargs):
-        #X = np.zeros(shape=(num, self._vector_size))
-        #Y = np.zeros(shape=(num,))
-        print('docvec.transform')
-        #pdb.set_trace()
-        Log.info(self, 'Get vectors for documents...')
-        data = []
-        target = []
-        infos = []
+class Classifier(object):
+    def __init__(self, doc2vec):
+        self.doc2vec = doc2vec
+
+    def predict(self, doc_words):
+        '''Predict category for each document in X.
+        Args:
+            doc_words: a list of words in a document
+        '''
+        raise NotImplementedError()
+
+    def fit(self, X):
+        '''Score a corpus.
+        Args:
+            X: Document object iterator.
+        '''
+        Log.warn(self, 'use Classifer.fit (default)')
+       
+
+    def score(self, X):
+        '''Score a corpus.
+        Args:
+            X: Document object iterator.
+        '''
+        Log.info(self, '======Score category classification with KNN====')
+        correct = 0 
+        total = 0
         for doc in X:
-            #data.append(self.model.infer_vector(doc.words))
-            #TODO: must change back
-            data.append(self.model.docvecs[doc.doc_no])
-            target.append(doc.topic_id)
-            infos.append((doc.doc_no, doc.tags, doc.topic_id, doc.topic, doc.url))
-        #pdb.set_trace()
-        return np.array(data), target, infos, self.model
+            cat_id = self.predict(doc.words)
+            total += 1
+            if cat_id == doc.topic_id:
+                correct +=1
+            
+        return correct/float(total)
+
 
 class KNN(object):
     def __init__(self, doc2vec, k=10):
@@ -215,24 +248,84 @@ class KNN(object):
                 correct +=1
             
         return correct/float(total)
-       
-#template class for build a fitable classification
-class PredictCategory(object):
-    def __init__(self):
+
+class SVNClassifier(Classifier):
+
+    def __init__(self, doc2vec):
+        super(SVNClassifier, self).__init__(doc2vec)
+
+    def fit(self, train_docs):
+        pdb.set_trace()
+    
+    def predict1(self, doc_words):
         pass
 
-    def fit(self, X, Y, *args, **kwargs):
-        print('call predict fit')
-        pdb.set_trace()
 
-    def transform(self, X, *args, **kwargs):
-        print('call predict transform')
-        pdb.set_trace()
+class MultipClassifiers(Classifier):
 
-    def predict(self, X):
-        print('call predict predict')
-        pdb.set_trace()
+    def __init__(self, doc2vec):
+        super(MultipClassifiers, self).__init__(doc2vec)
+        self.classifiers = [
+            KNeighborsClassifier(3),
+            SVC(kernel="linear", C=0.025),
+            SVC(gamma=2, C=1),
+            GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True),
+            DecisionTreeClassifier(max_depth=5),
+            RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+            MLPClassifier(alpha=1),
+            AdaBoostClassifier(),
+            GaussianNB(),
+            QuadraticDiscriminantAnalysis()
+            ]
 
+    def get_data(self, train_docs):
+        Log.info(self, 'Get vectorized data for corpus...')
+        X = []
+        y = []
+        infos = []
+        for doc in train_docs:
+            X.append(self.doc2vec.infer_docvec(doc.words))
+            y.append(doc.topic_id)
+            infos.append((doc.doc_no, doc.tags, doc.topic_id, doc.topic, doc.url))
+            #if len(y)>2000:
+                #break
+        return np.array(X), y, infos
+
+    def fit(self, train_docs):
+        X, y, infos = self.get_data(train_docs)
+        X = StandardScaler().fit_transform(X)
+        for cls in self.classifiers:
+            Log.info(self, 'fit ' + cls.__class__.__name__)
+            cls.fit(X, y)
+            Log.info(self, 'score ')
+            score = cls.score(X, y)
+            Log.info(self, '!!!RESULT!!in train!{}:{}'.format(cls.__class__.__name__, score))
+    
+    def predict(self, doc_words):
+        x = self.doc2vec.infer_docvec(doc_words)
+        x = x.reshape(1, -1)
+        x = StandardScaler().fit_transform(x)
+        pres = []
+        for cls in self.classifiers:
+            pres.append((cls.__class__.__name__, cls.predict(x)[0]))
+        return pres
+
+        
+    def score(self, train_docs):
+        Log.info(self, '======Score category classification====')
+        correct = defaultdict(int) 
+        total = 0
+        for doc in train_docs:
+            pres = self.predict(doc.words)
+            for name, cat_id in pres:
+                correct[name] +=1 if cat_id==doc.topic_id else 0
+            total += 1
+
+        total = float(total)
+        for key in correct.keys():
+            correct[key] /= total
+            
+        return correct
 
 #return multiple generator
 def multigen(gen_func):
@@ -292,7 +385,7 @@ params = {
     'min_count': (5, 10, 30, 100), 
 }
 
-def main():
+def pipeline_main():
     pipeline = make_pipeline()
     train_docs = read_corpus(data_dir, 0, train_percent)
     #pdb.set_trace()
@@ -317,7 +410,7 @@ def run1():
                             doc2vec = Doc2Vec(dm=dm, size=size, window=window, dm_mean=mean, dm_concat=concat, min_count = min_count)
                             doc2vec.train(train_docs)
                             if doc2vec.from_file:
-                                sys.stderr.write('!!!Ignore:' + doc2vec.auto_name())
+                                sys.stderr.write('!!!Ignore:' + doc2vec.auto_name() + '\n')
                                 continue
                             knn = KNN(doc2vec)
                             acc = knn.score(train_docs)
@@ -325,8 +418,22 @@ def run1():
                             sys.stderr.write('!!RESULT!!====dm={},size={},window={},mean={},concat={},min_count={},acc={}\n'.format(dm, size, window, mean, concat,min_count, acc))
     print('DONE')
 
+def run2():
+    train_docs = read_corpus(data_dir, 0, train_percent)
+
+    doc2vec = Doc2Vec()
+    doc2vec.train(train_docs)
+    
+    cls = MultipClassifiers(doc2vec)
+    cls.fit(train_docs)
+    #accs = cls.score(train_docs)
+    #print(accs)
+    print('Done')
+    pdb.set_trace()
+
 def main():
-    run1()
+    #run1()
+    run2()
 
 if __name__=='__main__':
     main()
