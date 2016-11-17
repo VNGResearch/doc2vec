@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from collections import namedtuple, defaultdict
 import random, numpy as np
-import os, glob
+import os, glob, sys
 import gensim
 import re
 import pickle
@@ -47,11 +47,14 @@ class Doc2Vec(object):
         self.model = gensim.models.Doc2Vec(dm=dm, size=self.size, window=self.window, min_count=min_count, workers=4, dm_mean=dm_mean, dm_concat=dm_concat)
 
         self.doc_infos = {}
+        self.from_file = False
 
     def load(self):
         model_file = self.auto_name()
         if os.path.isfile(model_file):
+            self.from_file = True
             warnings.warn('Load trained model from: ' + model_file)
+            print('Load trained model from: ' + model_file)
             self.doc_infos = self.load_docinfo()#TODO the code is not reall logic
             return gensim.models.doc2vec.Doc2Vec.load(model_file)
 
@@ -281,7 +284,7 @@ token_type = 'char'#word, vn_token
 model_dir = './models/'
 
 params = {
-    'dm': (0, 1),
+    'dm': (1, ),
     'size': (100, 250, 500),
     'window': (3, 5, 8, 10, 15),
     'mean': (0, 1),
@@ -311,11 +314,15 @@ def run1():
                 for mean in params['mean']:
                     for concat in params['concat']:
                         for min_count in params['min_count']:
-                            doc2vec = Doc2Vec(dm=dm)
+                            doc2vec = Doc2Vec(dm=dm, size=size, window=window, dm_mean=mean, dm_concat=concat, min_count = min_count)
                             doc2vec.train(train_docs)
+                            if doc2vec.from_file:
+                                sys.stderr.write('!!!Ignore:' + doc2vec.auto_name())
+                                continue
                             knn = KNN(doc2vec)
                             acc = knn.score(train_docs)
                             print('!!RESULT!!====dm={},size={},window={},mean={},concat={},min_count={},acc={}'.format(dm, size, window, mean, concat,min_count, acc))
+                            sys.stderr.write('!!RESULT!!====dm={},size={},window={},mean={},concat={},min_count={},acc={}\n'.format(dm, size, window, mean, concat,min_count, acc))
     print('DONE')
 
 def main():
