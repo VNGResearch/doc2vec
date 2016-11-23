@@ -4,6 +4,7 @@
 data/
 results/
 models/
+backup/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
