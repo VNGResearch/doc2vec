@@ -34,7 +34,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.preprocessing import StandardScaler
 
-from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer, TfidfVectorizer
 
 #from config import config
 
@@ -47,9 +47,11 @@ class Log(object):
     def info(sender, message):
         print('---INFO: ', sender, message, sep='\t')
 
+    @staticmethod
     def warn(sender, message):
         print('---WARN: ', sender, message, sep='\t')
 
+    @staticmethod
     def error(sender, message):
         sys.stderr.write('---ERROR: ', sender, message, '\n', sep='\t')
         
@@ -204,13 +206,12 @@ class BWDoc2Vec(object):
             
     def train(self, docs, tfidf=False):
         if tfidf:
-            self.doc2vec = TfidfVectorizer()
+            self.doc2vec = TfidfVectorizer(min_df=0.01, max_df=0.8)
         else:
             #count_vec = CountVectorizer(tokenizer=lambda x: x.split())#TODO: paramerters for optimization???
            self.doc2vec = CountVectorizer(min_df=0.01, max_df=0.8)#TODO: paramerters for optimization???
         self.doc2vec.fit(self.doc_iter(docs))
         print('See difference of models')
-        pdb.set_trace()
 
     def infer_docvec(self, words):
         return self.doc2vec.transform([' '.join(words)]).toarray()[0]
@@ -509,18 +510,18 @@ def run2():
 
     #test_docs = read_corpus(data_dir, train_percent, 1.0)
 
-    doc2vec = Doc2Vec(size=100)
+    doc2vec = Doc2Vec(size=500)
     doc2vec.train(train_docs, shuffle=True)
-    '''
+    #'''
     print('=================fit and avaluate classification')
     cls = MultipClassifiers(doc2vec)
     cls.fit(train_docs)
 
     accs = cls.score(test)
     print(accs)
-    '''
+    #'''
 
-    for rep in range(13):
+    for rep in range(31):
         print('===========================pass {}'.format(rep))
         #doc2vec.train(train_docs)
         doc2vec.train(train_docs, partial_train = True, shuffle=True)
@@ -550,7 +551,7 @@ def run3():
     
     doc2vec = BWDoc2Vec()
     print('===================fit dwdoc2vec---')
-    doc2vec.train(train)
+    doc2vec.train(train, tfidf=True)
 
     cls = MultipClassifiers(doc2vec)
     print('===================fit classifiers---')
@@ -561,8 +562,8 @@ def run3():
 
 def main():
     #run1()#GridSearch for hyperparameters for nueral-based Doc2Vec
-    run2()#for neural-based Doc2Vec
-    #run3()#for Bag of Word
+    #run2()#for neural-based Doc2Vec
+    run3()#for Bag of Word
 
 if __name__=='__main__':
     main()
