@@ -216,6 +216,25 @@ class BWDoc2Vec(object):
     def infer_docvec(self, words):
         return self.doc2vec.transform([' '.join(words)]).toarray()[0]
 
+class CombineDoc2Vecs(object):
+    def __init__(self, size, min_count):
+        self.dm_model = Doc2Vec(dm=1, size=size, window=8, min_count=min_count, dm_mean=0, dm_concat=0)
+        self.bw_model = Doc2Vec(dm=0, size=size, window=8, min_count=min_count, dm_mean=0, dm_concat=0)
+        
+    def train(self, X, *args, **kwargs):
+        Log.info(self, '---Train distributed memory model--')
+        self.dm_model.train(X, args, kwargs)
+        Log.info(self, '---Train distributed BoW model--')
+        self.bw_model.train(X, args, kwargs)
+
+    def infer_docvec(self, words):
+        vec1 = self.dm_model.infer_docvec(words)
+        vec2 = self.bw_model.infer_docvec(words)
+        print('Combine these vecs')#Next is here
+        pdb.set_trace()
+        return None
+       
+
 class Classifier(object):
     def __init__(self, doc2vec):
         self.doc2vec = doc2vec
@@ -312,7 +331,7 @@ class MultipClassifiers(Classifier):
         super(MultipClassifiers, self).__init__(doc2vec)
         self.classifiers = [
             #KNeighborsClassifier(3), #*
-            KNeighborsClassifier(6), #*
+            #KNeighborsClassifier(6), #*
             SVC(kernel="linear", C=0.025),
             #SVC(gamma=2, C=1), #*
             #GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True),#need memory
@@ -510,7 +529,7 @@ def run2():
 
     #test_docs = read_corpus(data_dir, train_percent, 1.0)
 
-    doc2vec = Doc2Vec(size=500)
+    doc2vec = Doc2Vec(dm=0, size=100, min_count=400)
     doc2vec.train(train_docs, shuffle=True)
     #'''
     print('=================fit and avaluate classification')
@@ -521,7 +540,7 @@ def run2():
     print(accs)
     #'''
 
-    for rep in range(31):
+    for rep in range(7):
         print('===========================pass {}'.format(rep))
         #doc2vec.train(train_docs)
         doc2vec.train(train_docs, partial_train = True, shuffle=True)
@@ -536,7 +555,7 @@ def run2():
             accs = cls.score(test)
             print(accs)
     print('Done')
-    pdb.set_trace()
+    #pdb.set_trace()
 
     #TODO next, change size to 300, then shuffle
 
@@ -560,10 +579,52 @@ def run3():
     print('===================score classifiers---')
     print(cls.score(test))
 
+def run4():
+    train_docs = read_corpus(data_dir, 0, train_percent)
+    train_small = read_corpus(data_dir, 0.1, 0.3)
+    test_small = read_corpus(data_dir, train_percent, train_percent + 0.1)
+    test = read_corpus(data_dir, train_percent, 1.0)
+
+    wiki_docs = read_addational_corpus(add_data_dir, doc_id = 39911)
+
+    #test_docs = read_corpus(data_dir, train_percent, 1.0)
+
+    doc2vec = CombineDoc2Vecs(size=100, min_count=50)
+    doc2vec.train(train_docs, shuffle=True)
+    #'''
+    print('=================fit and avaluate classification')
+    cls = MultipClassifiers(doc2vec)
+    cls.fit(train_docs)
+
+    accs = cls.score(test)
+    print(accs)
+    #'''
+
+    for rep in range(7):
+        print('===========================pass {}'.format(rep))
+        #doc2vec.train(train_docs)
+        doc2vec.train(train_docs, partial_train = True, shuffle=True)
+        #print('=================train addation data')
+        #doc2vec.train(wiki_docs, batch_size=50000, partial_train=True, shuffle=False)
+    
+        if rep%3==0:
+            print('=================fit and avaluate classification')
+            cls = MultipClassifiers(doc2vec)
+            cls.fit(train_docs)
+
+            accs = cls.score(test)
+            print(accs)
+    print('Done')
+    #pdb.set_trace()
+
+    #TODO next, change size to 300, then shuffle
+   
+
 def main():
     #run1()#GridSearch for hyperparameters for nueral-based Doc2Vec
     #run2()#for neural-based Doc2Vec
-    run3()#for Bag of Word
+    #run3()#for Bag of Word
+    run4()#for combine distributed memory and bag of words models
 
 if __name__=='__main__':
     main()

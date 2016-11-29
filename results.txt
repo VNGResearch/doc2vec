@@ -65,4 +65,73 @@ defaultdict(<class 'int'>, {'GaussianNB': 0.042144441520357907, 'SVC': 0.6314899
 defaultdict(<class 'int'>, {'SVC': 0.57693898266852139, 'KNeighborsClassifier': 0.44964096394601299, 'GaussianNB': 0.51344035490056017})
 
 =================================Doc2Vec, vectorsize 500===========================
-??
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   Get vectorized data for corpus...
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   fit KNeighborsClassifier
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   score in train set
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   !!!RESULT!!in train!KNeighborsClassifier:0.2923682100621367
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   fit SVC
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   score in train set
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   !!!RESULT!!in train!SVC:0.947559631188615
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   fit GaussianNB
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   score in train set
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   !!!RESULT!!in train!GaussianNB:0.5699288434556024
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   Get vectorized data for corpus...
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   ======Score category classification====
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   score KNeighborsClassifier
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   acc=0.1266588969510132
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   score SVC
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   acc=0.5411857588631152
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   score GaussianNB
+---INFO:        <__main__.MultipClassifiers object at 0x7f4ad9191710>   acc=0.45313733599007483
+defaultdict(<class 'int'>, {'KNeighborsClassifier': 0.12665889695101321, 'SVC': 0.54118575886311515, 'GaussianNB': 0.45313733599007483})
+=================================Doc2Vec, vectorsize 300===========================
+??nothing special
+
+=================================Doc2Vec, bag of word vectorsize 100===========================
+---INFO:        <__main__.MultipClassifiers object at 0x7f24ae84a400>   Get vectorized data for corpus...
+---INFO:        <__main__.MultipClassifiers object at 0x7f24ae84a400>   fit SVC
+---INFO:        <__main__.MultipClassifiers object at 0x7f24ae84a400>   score in train set
+---INFO:        <__main__.MultipClassifiers object at 0x7f24ae84a400>   !!!RESULT!!in train!SVC:0.801037282020445
+---INFO:        <__main__.MultipClassifiers object at 0x7f24ae84a400>   fit GaussianNB
+---INFO:        <__main__.MultipClassifiers object at 0x7f24ae84a400>   score in train set
+---INFO:        <__main__.MultipClassifiers object at 0x7f24ae84a400>   !!!RESULT!!in train!GaussianNB:0.6733814391661656
+---INFO:        <__main__.MultipClassifiers object at 0x7f24ae84a400>   Get vectorized data for corpus...
+---INFO:        <__main__.MultipClassifiers object at 0x7f24ae84a400>   ======Score category classification====
+---INFO:        <__main__.MultipClassifiers object at 0x7f24ae84a400>   score SVC
+---INFO:        <__main__.MultipClassifiers object at 0x7f24ae84a400>   acc=0.6529192826798
+---INFO:        <__main__.MultipClassifiers object at 0x7f24ae84a400>   score GaussianNB
+---INFO:        <__main__.MultipClassifiers object at 0x7f24ae84a400>   acc=0.5828414602052708
+defaultdict(<class 'int'>, {'GaussianNB': 0.58284146020527083, 'SVC': 0.65291928267980004})
+
+=================================Doc2Vec, bag of word vectorsize 100, min count=50===========================
+---INFO:        <__main__.MultipClassifiers object at 0x7f41fee89dd8>   Get vectorized data for corpus...
+---INFO:        <__main__.MultipClassifiers object at 0x7f41fee89dd8>   fit SVC
+---INFO:        <__main__.MultipClassifiers object at 0x7f41fee89dd8>   score in train set
+---INFO:        <__main__.MultipClassifiers object at 0x7f41fee89dd8>   !!!RESULT!!in train!SVC:0.7965524153136901
+---INFO:        <__main__.MultipClassifiers object at 0x7f41fee89dd8>   fit GaussianNB
+---INFO:        <__main__.MultipClassifiers object at 0x7f41fee89dd8>   score in train set
+---INFO:        <__main__.MultipClassifiers object at 0x7f41fee89dd8>   !!!RESULT!!in train!GaussianNB:0.6762126678693124
+---INFO:        <__main__.MultipClassifiers object at 0x7f41fee89dd8>   Get vectorized data for corpus...
+---INFO:        <__main__.MultipClassifiers object at 0x7f41fee89dd8>   ======Score category classification====
+---INFO:        <__main__.MultipClassifiers object at 0x7f41fee89dd8>   score SVC
+---INFO:        <__main__.MultipClassifiers object at 0x7f41fee89dd8>   acc=0.6552501973758412
+---INFO:        <__main__.MultipClassifiers object at 0x7f41fee89dd8>   score GaussianNB
+---INFO:        <__main__.MultipClassifiers object at 0x7f41fee89dd8>   acc=0.591450806421294
+defaultdict(<class 'int'>, {'GaussianNB': 0.591450806421294, 'SVC': 0.65525019737584123})
+
+=================================Doc2Vec, bag of word vectorsize 100, min count=150===========================
+---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   Get vectorized data for corpus...
+---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   fit SVC
+---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   score in train set
+---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   !!!RESULT!!in train!SVC:0.795625375826819
+---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   fit GaussianNB
+---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   score in train set
+---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   !!!RESULT!!in train!GaussianNB:0.6688965724594107
+---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   Get vectorized data for corpus...
+---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   ======Score category classification====
+---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   score SVC
+---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   acc=0.6486710026692732
+---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   score GaussianNB
+---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   acc=0.5875408849956766
+defaultdict(<class 'int'>, {'SVC': 0.64867100266927324, 'GaussianNB': 0.58754088499567658})
+
