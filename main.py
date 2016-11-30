@@ -442,7 +442,7 @@ class NNClassifier(Classifier):
             infos.append((doc.doc_no, doc.tags, doc.topic_id, doc.topic, doc.url))
             #if len(y)>1000:
                 #break
-        return np.array(X), y, infos
+        return np.array(X), np.array(y), infos
 
     def fit(self, train_docs, test_docs):
         X, y, infos = self.get_data(train_docs)
