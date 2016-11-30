@@ -23,6 +23,9 @@ import gensim
 import re
 import pickle
 
+import tensorflow as tf
+from nn import NeuralNetwork as NN
+
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
@@ -139,7 +142,6 @@ class Doc2Vec(object):
             Log.info(self, '----shuffle mode')
             self.shuffle = True
 
-
         Log.info(self, '======Training doc2vec model====')
         if not partial_train:
             model = self.load()
@@ -223,9 +225,9 @@ class CombineDoc2Vecs(object):
         
     def train(self, X, *args, **kwargs):
         Log.info(self, '---Train distributed memory model--')
-        self.dm_model.train(X, args, kwargs)
+        self.dm_model.train(X, *args, **kwargs)
         Log.info(self, '---Train distributed BoW model--')
-        self.bw_model.train(X, args, kwargs)
+        self.bw_model.train(X, *args, **kwargs)
 
     def infer_docvec(self, words):
         vec1 = self.dm_model.infer_docvec(words)
@@ -404,6 +406,82 @@ class MultipClassifiers(Classifier):
             correct[key] /= total
             
         return correct
+
+class NNClassifier(Classifier):
+    def __init__(self, doc2vec):
+        super(NNClassifier, self).__init__(doc2vec)
+
+        self.nn_des = {'layer_description':[
+                            {	'name': 'input',
+							    'unit_size': 200,
+    						},
+	    					{	'name': 'hidden1',
+		    					'active_fun': tf.nn.relu,
+			    				'unit_size': 400,
+				    		},
+					    	{	'name': 'output',
+						    	'active_fun': None,
+							    'unit_size': 60, 
+    						},
+	    				],
+		    		}
+        self.max_step=100
+        self.step_to_report_loss = 1
+        self.step_to_eval=5
+        self.nn_model = NN(self.nn_des)
+        self.learning_rate = 0.01
+
+    def get_data(self, train_docs):
+        Log.info(self, 'Get vectorized data for corpus...')
+        X = []
+        y = []
+        infos = []
+        for doc in train_docs:
+            X.append(self.doc2vec.infer_docvec(doc.words))
+            y.append(doc.topic_id)
+            infos.append((doc.doc_no, doc.tags, doc.topic_id, doc.topic, doc.url))
+            #if len(y)>1000:
+                #break
+        return np.array(X), y, infos
+
+    def fit(self, train_docs, test_docs):
+        X, y, infos = self.get_data(train_docs)
+        X_test, y_test, infos_test = self.get_data(test_docs)
+
+        with tf.Graph().as_default():
+            self.X = tf.placeholder(tf.float32, shape=(None, None))
+            self.Y = tf.placeholder(tf.int32, shape=(None))
+
+            self.predict_op = self.nn_model.inference(X)
+            self.loss_op = self.nn_model.loss(self.predict_op, y)
+            self.train_op = self.nn_model.training(self.loss_op, self.learning_rate)
+            self.eval_op = self.nn_model.evaluation(self.predict_op, y)
+
+            self.sess = tf.Session()
+            init = tf.initialize_all_variables()
+            self.sess.run(init)
+            #tf.global_variables_initializer()
+    
+            for step in range(self.max_step):
+                _, loss_value = self.sess.run([self.train_op, self.loss_op], feed_dict={self.X:X, self.Y:y})
+
+                if step%self.step_to_report_loss==0 or step+1==self.max_step:
+                    print('Step %d\tloss: %0.3f'%(step, loss_value))
+                if step%self.step_to_eval==0 or step+1==self.max_step:
+                    true_count = self.sess.run(self.eval_op, feed_dict={self.X:X, self.Y:y})
+                    print('---train set score:', float(true_count)/len(y))
+                    true_count = self.sess.run(self.eval_op, feed_dict={self.X:X_test, self.Y:y_test})
+                    print('---test set score:', float(true_count)/len(y_test))
+                    pdb.set_trace()
+
+
+    '''
+    def predict(self, doc_words):
+        pass
+
+    def score(self, train_docs):
+        pass
+    '''
 
 #return multiple generator
 def multigen(gen_func):
@@ -598,7 +676,7 @@ def run4():
     print(accs)
     #'''
 
-    for rep in range(7):
+    for rep in range(13):
         print('===========================pass {}'.format(rep))
         #doc2vec.train(train_docs)
         doc2vec.train(train_docs, partial_train = True, shuffle=True)
@@ -616,13 +694,37 @@ def run4():
     #pdb.set_trace()
 
     #TODO next, change size to 300, then shuffle
-   
+
+def run5():
+    train_docs = read_corpus(data_dir, 0, train_percent)
+    test = read_corpus(data_dir, train_percent, 1.0)
+
+    doc2vec = CombineDoc2Vecs(size=100, min_count=50)
+    doc2vec.train(train_docs, shuffle=True)
+
+    print('=================fit and avaluate classification')
+    cls = NNClassifier(doc2vec)
+    cls.fit(train_docs, test)
+
+    for rep in range(13):
+        print('===========================pass {}'.format(rep))
+        #doc2vec.train(train_docs)
+        doc2vec.train(train_docs, partial_train = True, shuffle=True)
+    
+        if rep%3==0:
+            print('=================fit and avaluate classification')
+            cls = NNClassifier(doc2vec)
+            cls.fit(train_docs, test)
+
+    print('Done')
+
 
 def main():
     #run1()#GridSearch for hyperparameters for nueral-based Doc2Vec
     #run2()#for neural-based Doc2Vec
     #run3()#for Bag of Word
-    run4()#for combine distributed memory and bag of words models
+    #run4()#for combine distributed memory and bag of words models
+    run5()#for NN classifier
 
 if __name__=='__main__':
     main()
