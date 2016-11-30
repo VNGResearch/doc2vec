@@ -230,7 +230,7 @@ class CombineDoc2Vecs(object):
     def infer_docvec(self, words):
         vec1 = self.dm_model.infer_docvec(words)
         vec2 = self.bw_model.infer_docvec(words)
-        print('Combine these vecs')#Next is here
+        print('Combine these vecs')#Next is here, afterward use NN for classification
         pdb.set_trace()
         return None
        
