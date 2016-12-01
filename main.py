@@ -425,9 +425,10 @@ class NNClassifier(Classifier):
     						},
 	    				],
 		    		}
-        self.max_step=100
-        self.step_to_report_loss = 1
-        self.step_to_eval=5
+        self.max_pass=50
+        self.batch_size = 10000
+        self.step_to_report_loss = 5
+        self.step_to_eval=10
         self.nn_model = NN(self.nn_des)
         self.learning_rate = 0.01
 
@@ -440,48 +441,65 @@ class NNClassifier(Classifier):
             X.append(self.doc2vec.infer_docvec(doc.words))
             y.append(doc.topic_id)
             infos.append((doc.doc_no, doc.tags, doc.topic_id, doc.topic, doc.url))
-            #if len(y)>1000:
-                #break
-        return np.array(X), np.array(y), infos
+            if len(y)>1000:
+                break
+        return np.array(X), y, infos
+
+    def batch_iter(self, X, y):
+        max_step = len(y)//self.batch_size
+        if max_step*self.batch_size<len(y):
+            max_step +=1
+        for step in range(max_step):
+            batch_X = X[step*self.batch_size: (step+1)*self.batch_size, :]
+            batch_y = y[step*self.batch_size: (step+1)*self.batch_size]
+            yield batch_X, batch_y
+       
+    def evaluate(self, sess, eval_op, X, Y, x_data, y_data):
+        true_count = 0
+        for batch_X, batch_y in self.batch_iter(x_data, y_data):
+            true_count += sess.run(eval_op, feed_dict={self.X:batch_X, self.Y:batch_y})
+
+        return true_count/float(len(y_data))
 
     def fit(self, train_docs, test_docs):
-        X, y, infos = self.get_data(train_docs)
+        X_train, y_train, infos_train = self.get_data(train_docs)
         X_test, y_test, infos_test = self.get_data(test_docs)
 
         with tf.Graph().as_default():
             self.X = tf.placeholder(tf.float32, shape=(None, None))
             self.Y = tf.placeholder(tf.int32, shape=(None))
 
-            self.predict_op = self.nn_model.inference(X)
-            self.loss_op = self.nn_model.loss(self.predict_op, y)
+            self.predict_op = self.nn_model.inference(self.X)
+            self.loss_op = self.nn_model.loss(self.predict_op, self.Y)
             self.train_op = self.nn_model.training(self.loss_op, self.learning_rate)
-            self.eval_op = self.nn_model.evaluation(self.predict_op, y)
+            self.eval_op = self.nn_model.evaluation(self.predict_op, self.Y)
 
             self.sess = tf.Session()
             init = tf.initialize_all_variables()
             self.sess.run(init)
             #tf.global_variables_initializer()
-    
-            for step in range(self.max_step):
-                _, loss_value = self.sess.run([self.train_op, self.loss_op], feed_dict={self.X:X, self.Y:y})
 
-                if step%self.step_to_report_loss==0 or step+1==self.max_step:
-                    print('Step %d\tloss: %0.3f'%(step, loss_value))
-                if step%self.step_to_eval==0 or step+1==self.max_step:
-                    true_count = self.sess.run(self.eval_op, feed_dict={self.X:X, self.Y:y})
-                    print('---train set score:', float(true_count)/len(y))
-                    true_count = self.sess.run(self.eval_op, feed_dict={self.X:X_test, self.Y:y_test})
-                    print('---test set score:', float(true_count)/len(y_test))
-                    pdb.set_trace()
+            for pas in range(self.max_pass):
+                print('----pas {}'.format(pas))
+                loss_arr = []
+                for batch_X, batch_y in self.batch_iter(X_train, y_train):
+                    _, loss_value = self.sess.run([self.train_op, self.loss_op], feed_dict={self.X:batch_X, self.Y:batch_y})
 
+                    if pas%self.step_to_report_loss==0 or step+1==self.max_pass:
+                        loss_arr.append(loss_value)
+                if len(loss_arr)>0:
+                    print('average loss: %0.3f'%(np.mean(loss_arr)))
 
-    '''
+                if pas%self.step_to_eval==0 or pas+1==self.max_pass:
+                    train_score = self.evaluate(self.sess, self.eval_op, self.X, self.Y, X_train, y_train)
+                    test_score = self.evaluate(self.sess, self.eval_op, self.X, self.Y, X_test, y_test)
+                    print('======train score: {}, test_score: {}'.format(train_score, test_score))
+
     def predict(self, doc_words):
         pass
 
     def score(self, train_docs):
         pass
-    '''
 
 #return multiple generator
 def multigen(gen_func):
