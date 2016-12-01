@@ -220,6 +220,7 @@ class BWDoc2Vec(object):
 
 class CombineDoc2Vecs(object):
     def __init__(self, size, min_count):
+        #TODO: using supported classs in gensim
         self.dm_model = Doc2Vec(dm=1, size=size, window=8, min_count=min_count, dm_mean=0, dm_concat=0)
         self.bw_model = Doc2Vec(dm=0, size=size, window=8, min_count=min_count, dm_mean=0, dm_concat=0)
         
@@ -425,8 +426,8 @@ class NNClassifier(Classifier):
     						},
 	    				],
 		    		}
-        self.max_pass=66
-        self.batch_size = 20000
+        self.max_pass=5000
+        self.batch_size = 10000
         self.step_to_report_loss = 5
         self.step_to_eval=10
         self.nn_model = NN(self.nn_des)
@@ -447,11 +448,15 @@ class NNClassifier(Classifier):
 
     def batch_iter(self, X, y):
         max_step = len(y)//self.batch_size
+        '''
         if max_step*self.batch_size<len(y):
             max_step +=1
+        '''
         for step in range(max_step):
+            #print('batch', step, step*self.batch_size, '->', (step+1)*self.batch_size)
             batch_X = X[step*self.batch_size: (step+1)*self.batch_size, :]
             batch_y = y[step*self.batch_size: (step+1)*self.batch_size]
+            #print('batchX', batch_X.shape, 'y', len(batch_y))
             yield batch_X, batch_y
        
     def evaluate(self, sess, eval_op, X, Y, x_data, y_data):
@@ -479,16 +484,19 @@ class NNClassifier(Classifier):
             self.sess.run(init)
             #tf.global_variables_initializer()
 
-            for pas in range(self.max_pass):
+            #for pas in range(self.max_pass):
+            while True:
                 #print('----pas {}'.format(pas))
                 loss_arr = []
-                for batch_X, batch_y in self.batch_iter(X_train, y_train):
+                for i, (batch_X, batch_y) in enumerate(self.batch_iter(X_train, y_train)):
+                    #print('batch', i)
+                    #pdb.set_trace()
                     _, loss_value = self.sess.run([self.train_op, self.loss_op], feed_dict={self.X:batch_X, self.Y:batch_y})
 
                     if pas%self.step_to_report_loss==0 or pas+1==self.max_pass:
                         loss_arr.append(loss_value)
                 if len(loss_arr)>0:
-                    print('pas %d, average loss: %0.3f'%(pas, np.mean(loss_arr)))
+                    print('------pas %d, average loss: %0.3f'%(pas, np.mean(loss_arr)))
 
                 if pas%self.step_to_eval==0 or pas+1==self.max_pass:
                     train_score = self.evaluate(self.sess, self.eval_op, self.X, self.Y, X_train, y_train)
@@ -718,6 +726,7 @@ def run5():
     test = read_corpus(data_dir, train_percent, 1.0)
 
     doc2vec = CombineDoc2Vecs(size=100, min_count=50)
+    #doc2vec = Doc2Vec(size=100, min_count=50)
     doc2vec.train(train_docs, shuffle=True)
 
     print('=================fit and avaluate classification')
