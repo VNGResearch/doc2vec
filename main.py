@@ -425,8 +425,8 @@ class NNClassifier(Classifier):
     						},
 	    				],
 		    		}
-        self.max_pass=50
-        self.batch_size = 10000
+        self.max_pass=66
+        self.batch_size = 20000
         self.step_to_report_loss = 5
         self.step_to_eval=10
         self.nn_model = NN(self.nn_des)
@@ -441,8 +441,8 @@ class NNClassifier(Classifier):
             X.append(self.doc2vec.infer_docvec(doc.words))
             y.append(doc.topic_id)
             infos.append((doc.doc_no, doc.tags, doc.topic_id, doc.topic, doc.url))
-            if len(y)>1000:
-                break
+            #if len(y)>1000:
+                #break
         return np.array(X), y, infos
 
     def batch_iter(self, X, y):
@@ -480,15 +480,15 @@ class NNClassifier(Classifier):
             #tf.global_variables_initializer()
 
             for pas in range(self.max_pass):
-                print('----pas {}'.format(pas))
+                #print('----pas {}'.format(pas))
                 loss_arr = []
                 for batch_X, batch_y in self.batch_iter(X_train, y_train):
                     _, loss_value = self.sess.run([self.train_op, self.loss_op], feed_dict={self.X:batch_X, self.Y:batch_y})
 
-                    if pas%self.step_to_report_loss==0 or step+1==self.max_pass:
+                    if pas%self.step_to_report_loss==0 or pas+1==self.max_pass:
                         loss_arr.append(loss_value)
                 if len(loss_arr)>0:
-                    print('average loss: %0.3f'%(np.mean(loss_arr)))
+                    print('pas %d, average loss: %0.3f'%(pas, np.mean(loss_arr)))
 
                 if pas%self.step_to_eval==0 or pas+1==self.max_pass:
                     train_score = self.evaluate(self.sess, self.eval_op, self.X, self.Y, X_train, y_train)
