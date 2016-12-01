@@ -485,6 +485,7 @@ class NNClassifier(Classifier):
             #tf.global_variables_initializer()
 
             #for pas in range(self.max_pass):
+            pas =0
             while True:
                 #print('----pas {}'.format(pas))
                 loss_arr = []
@@ -502,6 +503,7 @@ class NNClassifier(Classifier):
                     train_score = self.evaluate(self.sess, self.eval_op, self.X, self.Y, X_train, y_train)
                     test_score = self.evaluate(self.sess, self.eval_op, self.X, self.Y, X_test, y_test)
                     print('======train score: {}, test_score: {}'.format(train_score, test_score))
+                pas +=1
 
     def predict(self, doc_words):
         pass
