@@ -135,3 +135,5 @@ defaultdict(<class 'int'>, {'GaussianNB': 0.591450806421294, 'SVC': 0.6552501973
 ---INFO:        <__main__.MultipClassifiers object at 0x7f0357280940>   acc=0.5875408849956766
 defaultdict(<class 'int'>, {'SVC': 0.64867100266927324, 'GaussianNB': 0.58754088499567658})
 
+=================================Doc2Vec, combination, nn classifier, vector size= 100, min count=50===========================
+train: 75%, test: 63%

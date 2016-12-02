@@ -416,12 +416,16 @@ class NNClassifier(Classifier):
 
         self.nn_des = {'layer_description':[
                             {	'name': 'input',
-							    'unit_size': 200,
+							    'unit_size': 100,
     						},
 	    					{	'name': 'hidden1',
 		    					'active_fun': tf.nn.relu,
-			    				'unit_size': 400,
+			    				'unit_size': 1000,
 				    		},
+	    					#{	'name': 'hidden2',
+		    					#'active_fun': tf.nn.relu,
+			    				#'unit_size': 300,
+				    		#},
 					    	{	'name': 'output',
 						    	'active_fun': None,
 							    'unit_size': 61, 
@@ -598,7 +602,7 @@ add_data_dir = '../crawl_news/data/wiki/'
 train_percent = 0.6
 valid_percent = 0.2
 test_percent = 0.2
-token_type = 'vi_token'#char, word, vi_token
+token_type = 'vi_token'#char, word, vi_token #TODO very slow, could not be used
 #token_type = 'word'#char, word, vi_token
 stop_word_filter = False
 model_dir = './models/'
@@ -749,8 +753,8 @@ def run5():
     train_docs = read_corpus(data_dir, 0, train_percent)
     test = read_corpus(data_dir, train_percent, 1.0)
 
-    doc2vec = CombineDoc2Vecs(size=100, min_count=50)
-    #doc2vec = Doc2Vec(size=100, min_count=50)
+    #doc2vec = CombineDoc2Vecs(size=100, min_count=50)
+    doc2vec = Doc2Vec(dm=0, size=100, min_count=50)
     doc2vec.train(train_docs, shuffle=True)
 
     print('=================fit and avaluate classification')
