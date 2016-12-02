@@ -575,7 +575,8 @@ def read_corpus(data_dir, from_percent, to_percent):
 
 def vi_tokenizer(text):
     text = vietpro.standardize(text)
-    tokens = vietpro.tokenize(text)
+    #tokens = vietpro.tokenize(text)
+    tokens = text.split()
     tokens = vietpro.filter_stopwords(tokens)
     return tokens
 
