@@ -447,11 +447,18 @@ class NNClassifier(Classifier):
         return np.array(X), y, infos
 
     def batch_iter(self, X, y):
-        max_step = len(y)//self.batch_size
+        num_examples = len(y)
+        max_step = num_examples//self.batch_size
         '''
         if max_step*self.batch_size<len(y):
             max_step +=1
         '''
+        #shuffle data
+        perm = np.arange(num_examples)
+        perm = np.random.shuffle(perm)
+        X = X[perm]
+        y = np.array(y)[perm].tolist()
+
         for step in range(max_step):
             #print('batch', step, step*self.batch_size, '->', (step+1)*self.batch_size)
             batch_X = X[step*self.batch_size: (step+1)*self.batch_size, :]
@@ -461,10 +468,12 @@ class NNClassifier(Classifier):
        
     def evaluate(self, sess, eval_op, X, Y, x_data, y_data):
         true_count = 0
+        total= 0
         for batch_X, batch_y in self.batch_iter(x_data, y_data):
             true_count += sess.run(eval_op, feed_dict={self.X:batch_X, self.Y:batch_y})
+            total += len(batch_y)
 
-        return true_count/float(len(y_data))
+        return true_count/float(total)
 
     def fit(self, train_docs, test_docs):
         X_train, y_train, infos_train = self.get_data(train_docs)
