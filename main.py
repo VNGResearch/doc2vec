@@ -39,7 +39,7 @@ from sklearn.preprocessing import StandardScaler
 
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer, TfidfVectorizer
 
-#from config import config
+from vietpro import vietpro
 
 import pdb
 
@@ -221,8 +221,10 @@ class BWDoc2Vec(object):
 class CombineDoc2Vecs(object):
     def __init__(self, size, min_count):
         #TODO: using supported classs in gensim
-        self.dm_model = Doc2Vec(dm=1, size=size, window=8, min_count=min_count, dm_mean=0, dm_concat=0)
-        self.bw_model = Doc2Vec(dm=0, size=size, window=8, min_count=min_count, dm_mean=0, dm_concat=0)
+        #self.dm_model = Doc2Vec(dm=1, size=size, window=8, min_count=min_count, dm_mean=0, dm_concat=0)
+        #self.bw_model = Doc2Vec(dm=0, size=size, window=8, min_count=min_count, dm_mean=0, dm_concat=0)
+        self.dm_model = Doc2Vec(dm=1, size=size, min_count=min_count)
+        self.bw_model = Doc2Vec(dm=0, size=size, min_count=min_count)
         
     def train(self, X, *args, **kwargs):
         Log.info(self, '---Train distributed memory model--')
@@ -422,7 +424,7 @@ class NNClassifier(Classifier):
 				    		},
 					    	{	'name': 'output',
 						    	'active_fun': None,
-							    'unit_size': 60, 
+							    'unit_size': 61, 
     						},
 	    				],
 		    		}
@@ -449,13 +451,11 @@ class NNClassifier(Classifier):
     def batch_iter(self, X, y):
         num_examples = len(y)
         max_step = num_examples//self.batch_size
-        '''
         if max_step*self.batch_size<len(y):
             max_step +=1
-        '''
         #shuffle data
         perm = np.arange(num_examples)
-        perm = np.random.shuffle(perm)
+        np.random.shuffle(perm)
         X = X[perm]
         y = np.array(y)[perm].tolist()
 
@@ -473,7 +473,7 @@ class NNClassifier(Classifier):
             true_count += sess.run(eval_op, feed_dict={self.X:batch_X, self.Y:batch_y})
             total += len(batch_y)
 
-        return true_count/float(total)
+        return true_count/float(total), total
 
     def fit(self, train_docs, test_docs):
         X_train, y_train, infos_train = self.get_data(train_docs)
@@ -489,12 +489,14 @@ class NNClassifier(Classifier):
             self.eval_op = self.nn_model.evaluation(self.predict_op, self.Y)
 
             self.sess = tf.Session()
+            saver = tf.train.Saver()
             init = tf.initialize_all_variables()
             self.sess.run(init)
             #tf.global_variables_initializer()
 
             #for pas in range(self.max_pass):
             pas =0
+            best_acc = -1
             while True:
                 #print('----pas {}'.format(pas))
                 loss_arr = []
@@ -509,9 +511,12 @@ class NNClassifier(Classifier):
                     print('------pas %d, average loss: %0.3f'%(pas, np.mean(loss_arr)))
 
                 if pas%self.step_to_eval==0 or pas+1==self.max_pass:
-                    train_score = self.evaluate(self.sess, self.eval_op, self.X, self.Y, X_train, y_train)
-                    test_score = self.evaluate(self.sess, self.eval_op, self.X, self.Y, X_test, y_test)
-                    print('======train score: {}, test_score: {}'.format(train_score, test_score))
+                    train_score, train_total = self.evaluate(self.sess, self.eval_op, self.X, self.Y, X_train, y_train)
+                    test_score, test_total = self.evaluate(self.sess, self.eval_op, self.X, self.Y, X_test, y_test)
+                    print('======train score: {}({}), test_score: {}({})'.format(train_score, train_total, test_score, test_total))
+                    if test_score>best_acc:
+                        saver.save(self.sess, 'nn.best.model')
+                        best_acc = test_score
                 pas +=1
 
     def predict(self, doc_words):
@@ -558,11 +563,17 @@ def read_corpus(data_dir, from_percent, to_percent):
                 if token_type == 'word':
                     words = gensim.utils.to_unicode(words).split()
                 if token_type == 'vi_token':
-                    raise NotImplementedError() 
+                    words = vi_tokenizer(words)
                 #pdb.set_trace()
                 #corpus.append(Document(parts[0], topic_id, doc_count, words, [doc_id]))
                 yield Document(parts[0], topic_id, doc_count, words, [doc_id], os.path.basename(filename))
     #return corpus
+
+def vi_tokenizer(text):
+    text = vietpro.standardize(text)
+    tokens = vietpro.tokenize(text)
+    tokens = vietpro.filter_stopwords(tokens)
+    return tokens
 
 @multigen
 def read_addational_corpus(data_dir, doc_id=-1):
@@ -587,7 +598,9 @@ add_data_dir = '../crawl_news/data/wiki/'
 train_percent = 0.6
 valid_percent = 0.2
 test_percent = 0.2
-token_type = 'word'#word, vn_token
+token_type = 'vi_token'#char, word, vi_token
+#token_type = 'word'#char, word, vi_token
+stop_word_filter = False
 model_dir = './models/'
 
 params = {
@@ -642,7 +655,7 @@ def run2():
 
     #test_docs = read_corpus(data_dir, train_percent, 1.0)
 
-    doc2vec = Doc2Vec(dm=0, size=100, min_count=400)
+    doc2vec = Doc2Vec(dm=0, size=100, min_count=50)
     doc2vec.train(train_docs, shuffle=True)
     #'''
     print('=================fit and avaluate classification')
@@ -759,10 +772,10 @@ def run5():
 
 def main():
     #run1()#GridSearch for hyperparameters for nueral-based Doc2Vec
-    #run2()#for neural-based Doc2Vec
+    run2()#for neural-based Doc2Vec
     #run3()#for Bag of Word
     #run4()#for combine distributed memory and bag of words models
-    run5()#for NN classifier
+    #run5()#for NN classifier
 
 if __name__=='__main__':
     main()
