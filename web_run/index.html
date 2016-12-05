@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html class="no-js consumer" lang="en">
 <head>
-    <title>VNGResearch - Distributional semantic</title>
+    <title>VNGResearch - Document embedings</title>
     <link href="css/style.css" rel="stylesheet">
     <script src="scripts/communication.js"></script>
     <link href="images/logo.png" rel="icon" type="image/png">
@@ -10,12 +10,14 @@
 <body class="" id="grid">
 	<h1>VNGResearch - Document embedings for Vietnamese</h1>
 	<hr>
-	<p>Fill text in the box below and submit to see category, related Zing news and vector representation.</p>
+	<p>Fill text in the box below and submit to see category, related Zing news and vector representation. 
+    <!--<a href="mailto:thanhlct@gmail.com?Subject=VNG%20Doc2Vec%20System" target="_top">Contact us</a> for more details.-->
+    </p>
 	<hr>
 	<div>
-		Text content:<br>
-		<textarea id="txtContent" rows="10" cols="80">
-Tác dụng khi cho trẻ uống sữa nguyên kem
+		Document content:<br>
+		<textarea id="txtContent" rows="20" cols="100">
+Tác dụng khi cho trẻ uống sữa nguyên kem.
 
 Các nhà khoa học vừa nghiên cứu cho thấy trẻ em chỉ uống sữa nguyên kem, nhiều chất béo, sẽ có dáng người thon gọn.
 Theo nghiên cứu công bố trên tạp chí American Journal of Clinical Nutrition, khi trẻ em uống sữa nguyên kem, các bé sẽ cảm thấy no lâu, ít ăn vặt hoặc lựa chọn các loại thực phẩm không tốt cho sức khỏe như đồ ăn nhanh
@@ -32,32 +34,57 @@ Nghiên cứu của các nhà khoa học Canada trên hơn 2.000 trẻ em từ 2
 
 BMI được các bác sĩ và các chuyên gia sức khỏe sử dụng để xác định tình trạng cơ thể. Thông thường, chỉ số này được dùng để tính toán mức độ béo phì, từ 18,5-25 điểm là mức độ trung bình.</textarea>
 		<br><br>
-		<button onclick="submit()">
-			Submit
-		</button>
+		<button onclick="submit()">Submit</button>
+        <br>
 	</div>
 	<div id="results">
 	</div>
  
     <script>
 	function submit(){
-		content = document.getElementById("txtContent").innerHTML;
-		sendDM(content);
+		//content = document.getElementById("txtContent").innerHTML;
+		document.getElementById("results").innerHTML = '';
+		content = document.getElementById("txtContent").value;
+        content = content.trim()
+        if(content.length==0)
+            alert('Text content must not be empty!')
+        else
+		    sendDM(content);
 	}
 
     function sendDM(content){
         content = content.replace(/\r?\n|\r/g, " ");
         content = '{"content": "' + content + '"}';
-		//document.getElementById("results").innerHTML = content;
 
         var url = location.protocol + '//' + location.host + '/dm';
         var request = new send('POST', 'application/json', url, true, content + '\n', callbackDM);
     }
 
     function callbackDM(data){
-        //ret = eval('(' + data.text + ')');
-        ret = data	
-		document.getElementById("results").innerHTML = ret;
+        ret = eval('(' + data.text + ')');
+        category = ret['category'];
+        related = ret['related']
+        
+        results = 'Category: ' + category + '<br><br>';
+
+        results += 'Related Zing news: <br>';
+        lst = '<ul>';
+        var index;
+        for(index=0; index<related.length; ++index){
+            lst += '<li> <a href="' + related[index] + '">' + related[index] + '</a></li>';
+        }
+        lst += '</ul>'
+        results += lst
+
+        results += 'Content vector (size=' + ret['docvec'].length + '): <br>'
+        for(index=0; index<ret['docvec'].length; ++index){
+            results += ret['docvec'][index].toFixed(3) + '<br>'
+        }
+
+        //results += ret['docvec']
+
+		document.getElementById("results").innerHTML = results;
+        //document.body.appendChild(document.createElement('pre')).innerHTML = JSON.stringify(ret, null, 4);
     }
     </script>
 </body>

@@ -1,6 +1,7 @@
 #Thanh addaton
 *.swp
 *.model
+*.model.info
 data/
 results/
 models/

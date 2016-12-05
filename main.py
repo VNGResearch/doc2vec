@@ -192,13 +192,19 @@ class Doc2Vec(object):
             pickle.dump(self.doc_infos, f)#protocl 0 default-text-based; binary mode for1,2,-1, HIGHGEST PROTOCOL is normal???
 
     def auto_name(self):
-        return os.path.join(model_dir, token_type + '.' + re.sub('[\W_]+', '.', str(self.model)).lower() + 'model')
+        return os.path.join(model_dir,model_type + token_type + '.' + re.sub('[\W_]+', '.', str(self.model)).lower() + 'model')
 
     def infer_docvec(self, words):
         return self.model.infer_vector(words)
 
     def most_similar(self, docvec, topn = 10):
         return self.model.docvecs.most_similar(positive=[docvec], topn=topn)
+
+    def save(self, model_file='BEST.model'):
+        self.model.save(model_file)
+        fname = model_file + '.info'
+        with open(fname, 'wb') as f:
+            pickle.dump(self.doc_infos, f)
 
 
 class BWDoc2Vec(object):
@@ -335,14 +341,14 @@ class MultipClassifiers(Classifier):
         self.classifiers = [
             #KNeighborsClassifier(3), #*
             #KNeighborsClassifier(6), #*
-            SVC(kernel="linear", C=0.025),
+            SVC(kernel="linear", C=0.025, probability=True),
             #SVC(gamma=2, C=1), #*
             #GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True),#need memory
             #DecisionTreeClassifier(max_depth=5),
             #RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
             #MLPClassifier(alpha=1),
             #AdaBoostClassifier(),
-            GaussianNB(),
+            #GaussianNB(),
             #QuadraticDiscriminantAnalysis() #*
             ]
 
@@ -362,7 +368,8 @@ class MultipClassifiers(Classifier):
     def fit(self, train_docs):
         X, y, infos = self.get_data(train_docs)
         #Log.info(self, 'Train size ' + str(len(y)))
-        X = StandardScaler().fit_transform(X)
+        self.scaler = StandardScaler()
+        X = self.scaler.fit_transform(X)
         for cls in self.classifiers:
             Log.info(self, 'fit ' + cls.__class__.__name__)
             cls.fit(X, y)
@@ -370,11 +377,23 @@ class MultipClassifiers(Classifier):
             score = cls.score(X, y)
             Log.info(self, '!!!RESULT!!in train!{}:{}'.format(cls.__class__.__name__, score))
             #Log.error(self, '!!!RESULT!!in train!{}:{}'.format(cls.__class__.__name__, score))
+            self.save_best_model(score)
     
+    def save_best_model(self, score):
+        global best_acc
+        if score>best_acc:
+            model_file = 'BEST.doc2vec.model'
+            self.doc2vec.save(model_file)
+            with open('BEST.class.model', 'wb') as f:
+                pickle.dump(self.classifiers[0], f)
+            with open('BEST.scaler.model', 'wb') as f:
+                pickle.dump(self.scaler, f)
+            best_acc = score
+
     def predict(self, doc_words):
         x = self.doc2vec.infer_docvec(doc_words)
         x = x.reshape(1, -1)
-        x = StandardScaler().fit_transform(x)
+        x = self.scaler.transform(x)
         pres = []
         for cls in self.classifiers:
             pres.append((cls.__class__.__name__, cls.predict(x)[0]))
@@ -383,7 +402,7 @@ class MultipClassifiers(Classifier):
     def score(self, test_docs):
         X, y, infos = self.get_data(test_docs)
         #Log.info(self, 'Test size ' + str(len(y)))
-        X = StandardScaler().fit_transform(X)
+        X = self.scaler.transform(X)
         Log.info(self, '======Score category classification====')
         correct = defaultdict(int) 
         total = len(y)
@@ -420,12 +439,12 @@ class NNClassifier(Classifier):
     						},
 	    					{	'name': 'hidden1',
 		    					'active_fun': tf.nn.relu,
-			    				'unit_size': 1000,
+			    				'unit_size': 600,
 				    		},
-	    					#{	'name': 'hidden2',
-		    					#'active_fun': tf.nn.relu,
-			    				#'unit_size': 300,
-				    		#},
+	    					{	'name': 'hidden2',
+		    					'active_fun': tf.nn.relu,
+			    				'unit_size': 300,
+				    		},
 					    	{	'name': 'output',
 						    	'active_fun': None,
 							    'unit_size': 61, 
@@ -571,6 +590,7 @@ def read_corpus(data_dir, from_percent, to_percent):
                 #pdb.set_trace()
                 #corpus.append(Document(parts[0], topic_id, doc_count, words, [doc_id]))
                 yield Document(parts[0], topic_id, doc_count, words, [doc_id], os.path.basename(filename))
+            #print(topic_id, os.path.basename(filename), doc_count, sep='\t')
     #return corpus
 
 def vi_tokenizer(text):
@@ -603,8 +623,10 @@ add_data_dir = '../crawl_news/data/wiki/'
 train_percent = 0.6
 valid_percent = 0.2
 test_percent = 0.2
-token_type = 'vi_token'#char, word, vi_token #TODO very slow, could not be used
-#token_type = 'word'#char, word, vi_token
+model_type = 'BEST.'#char, word, vi_token
+best_acc = -1
+#token_type = 'vi_token'#char, word, vi_token #TODO very slow, could not be used
+token_type = 'word'#char, word, vi_token
 stop_word_filter = False
 model_dir = './models/'
 
@@ -774,13 +796,38 @@ def run5():
 
     print('Done')
 
+def run6():
+    print('=============RUN 6 - build the best model============')
+    train_docs = read_corpus(data_dir, 0, 1.0)
+
+    doc2vec = Doc2Vec(dm=0, size=100, min_count=50)
+    doc2vec.train(train_docs, shuffle=True)
+
+    print('=================fit and avaluate classification')
+    cls = MultipClassifiers(doc2vec)
+    cls.fit(train_docs)
+
+
+    for rep in range(31):
+        print('===========================pass {}'.format(rep))
+        doc2vec.train(train_docs, partial_train = True, shuffle=True)
+        #doc2vec.train(wiki_docs, batch_size=50000, partial_train=True, shuffle=False)
+    
+        if rep%3==0:
+            print('=================fit and avaluate classification')
+            cls = MultipClassifiers(doc2vec)
+            cls.fit(train_docs)
+            pdb.set_trace()
+
+    print('Done')
 
 def main():
     #run1()#GridSearch for hyperparameters for nueral-based Doc2Vec
-    run2()#for neural-based Doc2Vec
+    #run2()#for neural-based Doc2Vec
     #run3()#for Bag of Word
     #run4()#for combine distributed memory and bag of words models
     #run5()#for NN classifier
+    run6()#crate and save the best model for web_run
 
 if __name__=='__main__':
     main()
