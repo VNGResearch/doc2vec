@@ -585,6 +585,7 @@ def read_corpus(data_dir, from_percent, to_percent):
                 words = ' '.join(part.strip() for part in parts[1:])#concat title, descrpition, content and labels
                 if token_type == 'word':
                     words = gensim.utils.to_unicode(words).split()
+                    words = vietpro.filter_stopwords(words)
                     #pdb.set_trace()#TODO HERE
                 if token_type == 'vi_token':
                     words = vi_tokenizer(words)
@@ -626,7 +627,7 @@ train_percent = 0.6
 valid_percent = 0.2
 test_percent = 0.2
 #model_type = 'BEST.'
-model_type = 'vitoken.'
+model_type = 'vitoken.stopword.'
 best_acc = -1
 #token_type = 'vi_token'#char, word, vi_token #TODO very slow, could not be used
 token_type = 'word'#char, word, vi_token

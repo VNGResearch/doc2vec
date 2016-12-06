@@ -137,3 +137,11 @@ defaultdict(<class 'int'>, {'SVC': 0.64867100266927324, 'GaussianNB': 0.58754088
 
 =================================Doc2Vec, combination, nn classifier, vector size= 100, min count=50===========================
 train: 75%, test: 63%
+
+=================================Doc2Vec, combination, nn classifier, vector size= 100, min count=50===========================
+train: 80, test 66????
+
+
+=================================Doc2Vec, BoW, tokenize, stopword, vector size= 100, min count=50===========================
+tokenize: train 65, test 52
+tokenize+stopwords: train; test???
