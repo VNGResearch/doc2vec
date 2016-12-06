@@ -377,7 +377,7 @@ class MultipClassifiers(Classifier):
             score = cls.score(X, y)
             Log.info(self, '!!!RESULT!!in train!{}:{}'.format(cls.__class__.__name__, score))
             #Log.error(self, '!!!RESULT!!in train!{}:{}'.format(cls.__class__.__name__, score))
-            self.save_best_model(score)
+            #self.save_best_model(score)
     
     def save_best_model(self, score):
         global best_acc
@@ -585,6 +585,7 @@ def read_corpus(data_dir, from_percent, to_percent):
                 words = ' '.join(part.strip() for part in parts[1:])#concat title, descrpition, content and labels
                 if token_type == 'word':
                     words = gensim.utils.to_unicode(words).split()
+                    #pdb.set_trace()#TODO HERE
                 if token_type == 'vi_token':
                     words = vi_tokenizer(words)
                 #pdb.set_trace()
@@ -618,12 +619,14 @@ def read_addational_corpus(data_dir, doc_id=-1):
 
 
 #============global configuration
-data_dir = '../crawl_news/data/zing/'
+#data_dir = '../crawl_news/data/zing/'
+data_dir = '../crawl_news/data/zing_token/'
 add_data_dir = '../crawl_news/data/wiki/'
 train_percent = 0.6
 valid_percent = 0.2
 test_percent = 0.2
-model_type = 'BEST.'#char, word, vi_token
+#model_type = 'BEST.'
+model_type = 'vitoken.'
 best_acc = -1
 #token_type = 'vi_token'#char, word, vi_token #TODO very slow, could not be used
 token_type = 'word'#char, word, vi_token
@@ -693,7 +696,7 @@ def run2():
     print(accs)
     #'''
 
-    for rep in range(7):
+    for rep in range(10):
         print('===========================pass {}'.format(rep))
         #doc2vec.train(train_docs)
         doc2vec.train(train_docs, partial_train = True, shuffle=True)
@@ -819,11 +822,11 @@ def run6():
 
 def main():
     #run1()#GridSearch for hyperparameters for nueral-based Doc2Vec
-    #run2()#for neural-based Doc2Vec
+    run2()#for neural-based Doc2Vec
     #run3()#for Bag of Word
     #run4()#for combine distributed memory and bag of words models
     #run5()#for NN classifier
-    run6()#crate and save the best model for web_run
+    #run6()#crate and save the best model for web_run
 
 if __name__=='__main__':
     main()
