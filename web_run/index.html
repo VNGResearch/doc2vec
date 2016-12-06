@@ -10,8 +10,8 @@
 <body class="" id="grid">
 	<h1>VNGResearch - Document embedings for Vietnamese</h1>
 	<hr>
-	<p>Fill text in the box below and submit to see category, related Zing news and vector representation. 
-    <!--<a href="mailto:thanhlct@gmail.com?Subject=VNG%20Doc2Vec%20System" target="_top">Contact us</a> for more details.-->
+	<p>Fill text in the box below and submit to see its category, related Zing news and vector representation. 
+    <a href="mailto:thanhlct@gmail.com?Subject=VNG%20Doc2Vec%20System" target="_top">Contact us</a> for any further information.
     </p>
 	<hr>
 	<div>
@@ -65,7 +65,14 @@ BMI được các bác sĩ và các chuyên gia sức khỏe sử dụng để x
         category = ret['category'];
         related = ret['related']
         
-        results = 'Category: ' + category + '<br><br>';
+        results = 'Category predictions: <br>';
+        lst = '<ul>';
+        for(index=0; index<category.length; ++index){
+            lst += '<li>' + category[index][1].toFixed(3) + '&nbsp;&nbsp;&nbsp;&nbsp;' + category[index][0] + '</li>';
+        }
+        lst += '<li> ... </li>'
+        lst += '</ul>';
+        results += lst;
 
         results += 'Related Zing news: <br>';
         lst = '<ul>';
@@ -76,7 +83,7 @@ BMI được các bác sĩ và các chuyên gia sức khỏe sử dụng để x
         lst += '</ul>'
         results += lst
 
-        results += 'Content vector (size=' + ret['docvec'].length + '): <br>'
+        results += 'Vector representation for the text (size=' + ret['docvec'].length + '): <br>'
         for(index=0; index<ret['docvec'].length; ++index){
             results += ret['docvec'][index].toFixed(3) + '<br>'
         }

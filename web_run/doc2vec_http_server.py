@@ -6,6 +6,7 @@ A HTTP Server for the simple Doc2Vec
 import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__),'../'))
 '''
+import os
 
 from http.server import BaseHTTPRequestHandler, HTTPServer, SimpleHTTPRequestHandler
 import jsonlib
@@ -14,14 +15,15 @@ from datetime import datetime
 import gensim
 import pickle
 
-import numpy
+import numpy as np
 
 import pdb
 
 #load the best model for severing
-model_file = 'BEST.doc2vec.model'
-classifier_file = 'BEST.class.model'
-scaler_file = 'BEST.scaler.model'
+model_path = './models/pass0/'
+model_file = os.path.join(model_path, 'BEST.doc2vec.model')
+classifier_file = os.path.join(model_path, 'BEST.class.model')
+scaler_file = os.path.join(model_path, 'BEST.scaler.model')
 doc2vec = gensim.models.doc2vec.Doc2Vec.load(model_file)
 doc_infos = None
 with open(model_file + '.info', 'rb') as f:
@@ -86,15 +88,15 @@ class StatefulHandler(SimpleHTTPRequestHandler):
 
         #cats = classifier.predict(docvec_scaled)[0]
         cats = classifier.predict_proba(docvec_scaled)[0]
-        cat_rank = np.argsort(cats)[::-1][:5]
-        pdb.set_trace()
+        cats_rank = np.argsort(cats)[::-1][:5]
+        ret_cats = [(id2cat[i], cats[i]) for i in cats_rank]
 
         related = doc2vec.docvecs.most_similar(positive=[docvec], topn=10)
         rels = []
         for rel in related:
             rels.append(doc_infos[rel[0]][4])
 
-        ret = {'category': str(cats), 'related': rels, 'docvec': docvec.tolist()}
+        ret = {'category': ret_cats, 'related': rels, 'docvec': docvec.tolist()}
         return jsonlib.write(ret).decode('utf8')
         #return jsonlib.write(ret)
     

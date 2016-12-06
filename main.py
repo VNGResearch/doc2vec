@@ -708,9 +708,6 @@ def run2():
             accs = cls.score(test)
             print(accs)
     print('Done')
-    #pdb.set_trace()
-
-    #TODO next, change size to 300, then shuffle
 
 def run3():
     train_full = read_corpus(data_dir, 0, train_percent)
@@ -801,7 +798,7 @@ def run6():
     train_docs = read_corpus(data_dir, 0, 1.0)
 
     doc2vec = Doc2Vec(dm=0, size=100, min_count=50)
-    doc2vec.train(train_docs, shuffle=True)
+    doc2vec.train(train_docs, shuffle=False)
 
     print('=================fit and avaluate classification')
     cls = MultipClassifiers(doc2vec)
@@ -810,14 +807,13 @@ def run6():
 
     for rep in range(31):
         print('===========================pass {}'.format(rep))
-        doc2vec.train(train_docs, partial_train = True, shuffle=True)
+        doc2vec.train(train_docs, partial_train = True, shuffle=False)
         #doc2vec.train(wiki_docs, batch_size=50000, partial_train=True, shuffle=False)
     
         if rep%3==0:
             print('=================fit and avaluate classification')
             cls = MultipClassifiers(doc2vec)
             cls.fit(train_docs)
-            pdb.set_trace()
 
     print('Done')
 
