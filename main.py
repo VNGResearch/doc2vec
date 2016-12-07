@@ -1,9 +1,3 @@
-'''---------Notes for complete---------------------
-- try different classifier
-- try other approaches: rnn, bag-of-words, baiesian
-
-'''
-#TODO: Vietnamese tokenizer, split mark (e.g. ", .!~ from words
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -40,8 +34,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer, TfidfVectorizer
 
 from vietpro import vietpro
-
-import pdb
 
 Document = namedtuple('Document', 'url topic_id doc_no words tags topic')
 
@@ -328,7 +320,7 @@ class SVNClassifier(Classifier):
         super(SVNClassifier, self).__init__(doc2vec)
 
     def fit(self, train_docs):
-        pdb.set_trace()
+        pass
     
     def predict1(self, doc_words):
         pass
@@ -439,7 +431,7 @@ class NNClassifier(Classifier):
     						},
 	    					{	'name': 'hidden1',
 		    					'active_fun': tf.nn.relu,
-			    				'unit_size': 600,
+			    				'unit_size': 800,
 				    		},
 	    					{	'name': 'hidden2',
 		    					'active_fun': tf.nn.relu,
@@ -525,7 +517,6 @@ class NNClassifier(Classifier):
                 loss_arr = []
                 for i, (batch_X, batch_y) in enumerate(self.batch_iter(X_train, y_train)):
                     #print('batch', i)
-                    #pdb.set_trace()
                     _, loss_value = self.sess.run([self.train_op, self.loss_op], feed_dict={self.X:batch_X, self.Y:batch_y})
 
                     if pas%self.step_to_report_loss==0 or pas+1==self.max_pass:
@@ -585,11 +576,9 @@ def read_corpus(data_dir, from_percent, to_percent):
                 words = ' '.join(part.strip() for part in parts[1:])#concat title, descrpition, content and labels
                 if token_type == 'word':
                     words = gensim.utils.to_unicode(words).split()
-                    words = vietpro.filter_stopwords(words)
-                    #pdb.set_trace()#TODO HERE
+                    #words = vietpro.filter_stopwords(words)
                 if token_type == 'vi_token':
                     words = vi_tokenizer(words)
-                #pdb.set_trace()
                 #corpus.append(Document(parts[0], topic_id, doc_count, words, [doc_id]))
                 yield Document(parts[0], topic_id, doc_count, words, [doc_id], os.path.basename(filename))
             #print(topic_id, os.path.basename(filename), doc_count, sep='\t')
@@ -597,7 +586,7 @@ def read_corpus(data_dir, from_percent, to_percent):
 
 def vi_tokenizer(text):
     text = vietpro.standardize(text)
-    #tokens = vietpro.tokenize(text)
+    tokens = vietpro.tokenize(text)
     tokens = text.split()
     tokens = vietpro.filter_stopwords(tokens)
     return tokens
@@ -620,14 +609,14 @@ def read_addational_corpus(data_dir, doc_id=-1):
 
 
 #============global configuration
-#data_dir = '../crawl_news/data/zing/'
-data_dir = '../crawl_news/data/zing_token/'
+data_dir = '../crawl_news/data/zing/'
+#data_dir = '../crawl_news/data/zing_token/'
 add_data_dir = '../crawl_news/data/wiki/'
 train_percent = 0.6
 valid_percent = 0.2
 test_percent = 0.2
 #model_type = 'BEST.'
-model_type = 'vitoken.stopword.'
+model_type = ''
 best_acc = -1
 #token_type = 'vi_token'#char, word, vi_token #TODO very slow, could not be used
 token_type = 'word'#char, word, vi_token
@@ -646,7 +635,6 @@ params = {
 def pipeline_main():
     pipeline = make_pipeline()
     train_docs = read_corpus(data_dir, 0, train_percent)
-    #pdb.set_trace()
     #pipeline.set_params(doc2vec__computed=True)#need need to be in the init method
     pipeline.fit(train_docs)#only pass to the fit method
 
@@ -654,7 +642,6 @@ def pipeline_main():
     #TODO read validation test
     pipeline.predict(train_docs)
     print('DONE')
-    pdb.set_trace()
 
 def run1():
     train_docs = read_corpus(data_dir, 0, train_percent)
@@ -769,11 +756,9 @@ def run4():
             accs = cls.score(test)
             print(accs)
     print('Done')
-    #pdb.set_trace()
-
-    #TODO next, change size to 300, then shuffle
 
 def run5():
+    print('=============RUN 5 - use NN classifier============')
     train_docs = read_corpus(data_dir, 0, train_percent)
     test = read_corpus(data_dir, train_percent, 1.0)
 
@@ -802,7 +787,7 @@ def run6():
     train_docs = read_corpus(data_dir, 0, 1.0)
 
     doc2vec = Doc2Vec(dm=0, size=100, min_count=50)
-    doc2vec.train(train_docs, shuffle=False)
+    doc2vec.train(train_docs, shuffle=True)
 
     print('=================fit and avaluate classification')
     cls = MultipClassifiers(doc2vec)
@@ -811,7 +796,7 @@ def run6():
 
     for rep in range(31):
         print('===========================pass {}'.format(rep))
-        doc2vec.train(train_docs, partial_train = True, shuffle=False)
+        doc2vec.train(train_docs, partial_train = True, shuffle=True)
         #doc2vec.train(wiki_docs, batch_size=50000, partial_train=True, shuffle=False)
     
         if rep%3==0:
@@ -823,10 +808,10 @@ def run6():
 
 def main():
     #run1()#GridSearch for hyperparameters for nueral-based Doc2Vec
-    run2()#for neural-based Doc2Vec
+    #run2()#for neural-based Doc2Vec
     #run3()#for Bag of Word
     #run4()#for combine distributed memory and bag of words models
-    #run5()#for NN classifier
+    run5()#for NN classifier
     #run6()#crate and save the best model for web_run
 
 if __name__=='__main__':
