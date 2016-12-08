@@ -10,7 +10,7 @@
 <body class="" id="grid">
 	<h1>VNGResearch - Document embeddings for Vietnamese</h1>
 	<hr>
-	<p>Fill text in the box below and submit to see its category, related Zing news and vector representation. 
+	<p>Fill text in the box below and submit to see its category, related Zing news and representation vector. 
     <a href="mailto:thanhlct@gmail.com?Subject=VNG%20Doc2Vec%20System" target="_top">Contact us</a> for any further information.
     </p>
 	<hr>
@@ -66,6 +66,7 @@ Bốn năm sau, khi cùng con trai nhớ lại chuyến đi tới Việt Nam, nh
 
     function sendDM(content){
         content = content.replace(/\r?\n|\r/g, " ");
+        content = content.replace(/"/g, " ");
         content = '{"content": "' + content + '"}';
 
         var url = location.protocol + '//' + location.host + '/dm';
