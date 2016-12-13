@@ -18,8 +18,6 @@ import pickle
 import numpy as np
 from measures import Similarity 
 
-import pdb
-
 #load the best model for severing
 model_path = './models/pass0/'
 model_file = os.path.join(model_path, 'BEST.doc2vec.model')
@@ -50,7 +48,6 @@ class StatefulHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super(StatefulHandler, self).__init__(*args, **kwargs)
         self.load_doc2vec() 
-        pdb.set_trace()
     '''
     
     def do_POST(self):
@@ -120,7 +117,7 @@ class StatefulHandler(SimpleHTTPRequestHandler):
     
 def main():
     #uuid = 'D24CB19B8EAF11E4ACAFC1AA6AEC2530'
-    port = 8081
+    port = 8080
     
     server_address=('',port)
     httpd = HTTPServer(server_address, StatefulHandler)
