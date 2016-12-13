@@ -16,6 +16,7 @@ import gensim
 import pickle
 
 import numpy as np
+from measures import Similarity 
 
 import pdb
 
@@ -73,10 +74,27 @@ class StatefulHandler(SimpleHTTPRequestHandler):
         ret = ''
         if path == 'dm':
             ret = self._dm_process(message)
+        elif path=='distance':
+            ret = self._distance_process(message)
         else:
             pass
         
         return ret
+
+    def _distance_process(self, message):
+        doc1 = message['content']
+        doc1 = preprocess(doc1)
+        doc2 = message['content2']
+        doc2 = preprocess(doc2)
+
+        docvec1 = doc2vec.infer_vector(doc1)
+        docvec2 = doc2vec.infer_vector(doc2)
+
+        euclidean = Similarity.euclidean_distance(docvec1, docvec2)
+        manhattan= Similarity.manhattan_distance(docvec1, docvec2)
+        cosine = Similarity.cosine_similarity(docvec1, docvec2)
+        ret = {'cosine': cosine, 'euclidean':euclidean, 'manhattan': manhattan}
+        return jsonlib.write(ret).decode('utf8')
 
     def _dm_process(self, message):
         content = message['content']
@@ -94,7 +112,7 @@ class StatefulHandler(SimpleHTTPRequestHandler):
         related = doc2vec.docvecs.most_similar(positive=[docvec], topn=10)
         rels = []
         for rel in related:
-            rels.append(doc_infos[rel[0]][4])
+            rels.append((doc_infos[rel[0]][4], rel[1]))
 
         ret = {'category': ret_cats, 'related': rels, 'docvec': docvec.tolist()}
         return jsonlib.write(ret).decode('utf8')
@@ -102,7 +120,7 @@ class StatefulHandler(SimpleHTTPRequestHandler):
     
 def main():
     #uuid = 'D24CB19B8EAF11E4ACAFC1AA6AEC2530'
-    port = 8080
+    port = 8081
     
     server_address=('',port)
     httpd = HTTPServer(server_address, StatefulHandler)

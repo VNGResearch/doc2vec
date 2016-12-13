@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html class="no-js consumer" lang="en">
+<head>
+    <title>VNGResearch - Document embeddings</title>
+    <link href="css/style.css" rel="stylesheet">
+    <script src="scripts/communication.js"></script>
+    <link href="images/logo.png" rel="icon" type="image/png">
+</head>
+
+<body class="" id="grid">
+	<h1>VNGResearch - Document embeddings for Vietnamese</h1>
+	<hr>
+	<p>Fill text in the box below and submit to see its category, related Zing news and representation vector. 
+    <a href="mailto:thanhlct@gmail.com?Subject=VNG%20Doc2Vec%20System" target="_top">Contact us</a> for any further information.
+    </p>
+	<hr>
+	<div>
+		Document content:<br>
+		<textarea id="txtContent" rows="20" cols="100">Vlog phượt bụi Việt Nam đạt 3 triệu view trong 2 ngày.
+
+Ngày 28/11, vlogger Casey Neistat đã đăng tải đoạn video trải nghiệm Việt Nam 4 năm trước cùng con trai lên Youtube. Đoạn video nhận được hơn 3 triệu lượt xem chỉ trong 2 ngày.
+
+Casey Neistat là một nhà làm phim, vlogger người Mỹ, sống tại New York. Sau hơn một năm anh đăng tải video lên kênh Youtube cá nhân và chia sẻ những điều thú vị trong cuộc sống, kênh đã cán mốc hơn 5,8 triệu người đăng ký.
+
+Gần đây anh đã bán kênh cá nhân cho đài CNN với giá 25 triệu USD để tập trung hơn vào công việc. Tuy nhiên, vlogger này bất ngờ dành cho người xem khi đăng tải một đoạn phim dài 15 phút - The Vietnam Notebook - kể về hành trình đến Việt Nam cùng con trai năm 2012. Khi đó, con anh 14 tuổi. Chỉ 2 ngày, đoạn video nhận được gần 3,5 triệu lượt xem trên Youtube.
+
+Hành trình phượt bụi, trải nghiệm Việt Nam của cha con Casey diễn ra vào 4 năm trước.
+
+Anh cho biết mỗi mùa hè, trước khi Owen vào nhập học, anh đều cùng con trai đi du lịch. Việt Nam là hành trình thứ 10 của họ. Chuyến đi đầu tiên của hai cha con diễn ra vào năm 2002 tới Bahamas. Đứa trẻ nào cũng khao khát những chuyến đi và là một người bố, anh thích trải nghiệm và chia sẻ cùng con.
+
+Đặt chân đến Hà Nội, hai cha con ở tại khách sạn Hilton Hanoi Opera, rồi thuê xe máy chạy về Hòa Bình. Như nhiều du khách nước ngoài, điều anh thấy rõ là người Việt thường chạy xe phân khối thấp, rất ít xe môtô phân khối lớn.
+
+Sau khi thuê được chiếc môtô ưng ý, hai bố con bắt đầu hành trình tới Hòa Bình.
+
+Với Casey, đây là một chuyến đi đầy hoài niệm với nhiều suy ngẫm. Khi nghĩ về thời ấu thơ, anh chỉ nhớ khoảnh khắc ngồi trong xe cùng bố vào những ngày nghỉ. Nhưng anh và Owen lại khác. Anh luôn khắc ghi những chặng đường lớn mà hai bố con cùng nhau trải nghiệm hàng năm.
+
+Tại Hoà Bình, họ gặp người dân địa phương, trò chuyện cùng họ, thử rượu rắn, ăn bánh chocopie dọc đường, ngủ tại nhà sàn. Buồng ngủ đơn giản gồm đệm, gối, màn, quạt điện.
+
+Một ngày rưỡi rong ruổi trên đường, Owen phải ngồi trên chiếc khung nhôm đằng sau xe, Casey quyết định mua một tấm đệm buộc vào yên sau. Họ cứ thế rong ruổi mà không định trước đích đến.
+
+Khi ở nhà dân, điều mà cha con Casey đặc biệt ấn tượng là hệ thống bình nước nóng được kết nối với vòi sen bằng một mạch điện được lắp ráp rất “giật gân”.
+
+Ngày cuối cùng ở Việt Nam, hai cha con quyết định lên một chiếc thuyền ở vịnh Hạ Long (Quảng Ninh) với nhiều trải nghiệm thú vị. Trên thuyền có nhiều đồng hương của họ, cùng khám phá di sản thiên nhiên lừng danh ở Việt Nam.
+
+Mọi kỷ niệm và những trải nghiệm thú vị đều được ghi lại trong cuốn sổ tay của anh. 
+
+Bốn năm sau, khi cùng con trai nhớ lại chuyến đi tới Việt Nam, những chuyến tàu, chiếc xe môtô, và nhiều kỷ niệm khác vẫn còn trong tâm trí hai cha con.</textarea>
+		<br><br>
+		<button onclick="submit()">Submit</button>
+        <br>
+	</div>
+	<div id="results">
+	</div>
+ 
+    <script>
+	function submit(){
+		//content = document.getElementById("txtContent").innerHTML;
+		document.getElementById("results").innerHTML = '';
+		content = document.getElementById("txtContent").value;
+        content = content.trim()
+        if(content.length==0)
+            alert('Text content must not be empty!')
+        else
+		    sendDM(content);
+	}
+
+    function sendDM(content){
+        content = content.replace(/\r?\n|\r/g, " ");
+        content = content.replace(/"/g, " ");
+        content = '{"content": "' + content + '"}';
+
+        var url = location.protocol + '//' + location.host + '/dm';
+		document.getElementById("results").innerHTML = 'Please copy paragraphs one by one if you don\'t see results in a few seconds.<br>Some special characters might be included in your text.';
+        var request = new send('POST', 'application/json', url, true, content + '\n', callbackDM);
+        //alert('There are specially invisible characters in the text you filled. <br> Please copy paragraphs one by one!')
+    }
+
+    function callbackDM(data){
+        ret = eval('(' + data.text + ')');
+        category = ret['category'];
+        related = ret['related']
+        
+        results = 'Category predictions: <br>';
+        lst = '<ul>';
+        for(index=0; index<category.length; ++index){
+            lst += '<li>' + category[index][1].toFixed(3) + '&nbsp;&nbsp;&nbsp;&nbsp;' + category[index][0] + '</li>';
+        }
+        lst += '<li> ... </li>'
+        lst += '</ul>';
+        results += lst;
+
+        results += 'Related Zing news: <br>';
+        lst = '<ul>';
+        var index;
+        for(index=0; index<related.length; ++index){
+            lst += '<li>' + related[index][1].toFixed(3) + '&nbsp;&nbsp;&nbsp;&nbsp' + '<a href="' + related[index][0] + '">' + related[index][0] + '</a></li>';
+        }
+        lst += '</ul>'
+        results += lst
+
+        results += 'Vector representation for the text (size=' + ret['docvec'].length + '): <br>'
+        for(index=0; index<ret['docvec'].length; ++index){
+            results += ret['docvec'][index].toFixed(3) + '<br>'
+        }
+
+        //results += ret['docvec']
+
+		document.getElementById("results").innerHTML = results;
+        //document.body.appendChild(document.createElement('pre')).innerHTML = JSON.stringify(ret, null, 4);
+    }
+    </script>
+</body>
+</html>
