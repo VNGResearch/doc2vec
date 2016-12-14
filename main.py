@@ -11,6 +11,7 @@ from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from collections import namedtuple, defaultdict
+import itertools
 import random, numpy as np
 import os, glob, sys
 import gensim
@@ -34,6 +35,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer, TfidfVectorizer
 
 from vietpro import vietpro
+from web_run.measures import Similarity
+
+import pdb
 
 Document = namedtuple('Document', 'url topic_id doc_no words tags topic')
 
@@ -116,6 +120,12 @@ class Doc2Vec(object):
 
         #plot_with_labels(low_dim_embs, labels) 
         self.plot_with_color(low_dim_embs, labels, classes, filename)
+
+    def build_vocab(self, X):
+        Log.info(self, '----Build vocabs')
+        self.model.build_vocab(X)
+        #for doc in X:
+            #pass
 
     def train(self, X, *args, **kwargs):
         '''Train doc2vec model.
@@ -578,6 +588,7 @@ def read_corpus(data_dir, from_percent, to_percent):
                 #corpus.append(Document(parts[0], topic_id, doc_count, words, [doc_id]))
                 yield Document(parts[0], topic_id, doc_count, words, [doc_id], os.path.basename(filename))
             #print(topic_id, os.path.basename(filename), doc_count, sep='\t')
+    #print('Zing doc_id has used is', doc_id)
     #return corpus
 
 def vi_tokenizer(text):
@@ -601,18 +612,20 @@ def read_addational_corpus(data_dir, doc_id=-1):
                     words = gensim.utils.to_unicode(words).split()
                 if token_type == 'vi_token':
                     raise NotImplementedError() 
-                yield Document(None, None, doc_count, words, [doc_id], 'wiki')
+                yield Document(None, None, doc_count, words, [doc_id], data_dir)
+    #print(data_dir, 'has used is', doc_id)
 
 
 #============global configuration
 data_dir = '../crawl_news/data/zing/'
 #data_dir = '../crawl_news/data/zing_token/'
-add_data_dir = '../crawl_news/data/wiki/'
+wiki_data_dir = '../crawl_news/data/wiki/'
+docbao_data_dir = '../crawl_news/data/docbao/'
 train_percent = 0.6
 valid_percent = 0.2
 test_percent = 0.2
 #model_type = 'BEST.'
-model_type = ''
+model_type = 'biggest.'
 best_acc = -1
 #token_type = 'vi_token'#char, word, vi_token #TODO very slow, could not be used
 token_type = 'word'#char, word, vi_token
@@ -665,7 +678,7 @@ def run2():
     test_small = read_corpus(data_dir, train_percent, train_percent + 0.1)
     test = read_corpus(data_dir, train_percent, 1.0)
 
-    wiki_docs = read_addational_corpus(add_data_dir, doc_id = 39911)
+    wiki_docs = read_addational_corpus(wiki_data_dir, doc_id = 39911)
 
     #test_docs = read_corpus(data_dir, train_percent, 1.0)
 
@@ -722,7 +735,7 @@ def run4():
     test_small = read_corpus(data_dir, train_percent, train_percent + 0.1)
     test = read_corpus(data_dir, train_percent, 1.0)
 
-    wiki_docs = read_addational_corpus(add_data_dir, doc_id = 39911)
+    wiki_docs = read_addational_corpus(wiki_data_dir, doc_id = 39911)
 
     #test_docs = read_corpus(data_dir, train_percent, 1.0)
 
@@ -802,13 +815,68 @@ def run6():
 
     print('Done')
 
+def build_catdocs(zing_docs):
+    cat_docs = defaultdict(list)
+    for doc in zing_docs:
+        tag = doc.tags[0]
+        cat = doc.topic_id
+        cat_docs[cat].append(tag)
+    return cat_docs
+
+def evaluate(doc2vec, cat_docs):
+    N = 100000
+    max_cat = 59;
+    acc = 0
+    for i in range(N):
+        cat1, cat2 = random.sample(range(0, max_cat), 2)
+        doc1, doc2 = random.sample(cat_docs[cat1], 2)
+        doc3= random.sample(cat_docs[cat2], 1)[0]
+        vec1 = doc2vec.model.docvecs[doc1]
+        vec2 = doc2vec.model.docvecs[doc2]
+        vec3 = doc2vec.model.docvecs[doc3]
+        cos12 = Similarity.cosine_similarity(vec1, vec2)
+        cos13 = Similarity.cosine_similarity(vec1, vec3)
+        cos23 = Similarity.cosine_similarity(vec2, vec3)
+
+        acc += 1 if cos12>cos13 and cos12>cos23 else 0
+        '''
+        if i%10000==0:
+            print(i)
+        '''
+
+    print('Accuracy {}'.format(acc/float(N)))
+
+def run7():
+    print('=============RUN 7 - adding data and automatic evaluation============')
+    zing_docs = read_corpus(data_dir, 0, 1.0)
+    docbao_docs = read_addational_corpus(docbao_data_dir, doc_id = 66511)
+    wiki_docs = read_addational_corpus(wiki_data_dir, doc_id = 177817)
+    all_docs = itertools.chain(zing_docs, docbao_docs, wiki_docs)#used 1327381
+    #all_docs = itertools.chain(zing_docs, docbao_docs)
+    cat_docs = build_catdocs(zing_docs)
+
+    doc2vec = Doc2Vec(dm=0, size=100, min_count=50)
+    doc2vec.build_vocab(all_docs)
+
+    for rep in range(31):
+        print('===========================pass {}'.format(rep))
+        all_docs = itertools.chain(zing_docs, docbao_docs, wiki_docs)
+        #all_docs = itertools.chain(zing_docs, docbao_docs)
+        #doc2vec.train(all_docs, partial_train = True, shuffle=True)
+        doc2vec.train(all_docs,batch_size=40000, partial_train = True, shuffle=True)
+        #doc2vec.train(wiki_docs, batch_size=50000, partial_train=True, shuffle=False)
+        if rep%3==0:
+            print('=================automatic evaluation')
+            evaluate(doc2vec, cat_docs)
+
 def main():
     #run1()#GridSearch for hyperparameters for nueral-based Doc2Vec
     #run2()#for neural-based Doc2Vec
     #run3()#for Bag of Word
     #run4()#for combine distributed memory and bag of words models
-    run5()#for NN classifier
+    #run5()#for NN classifier
     #run6()#crate and save the best model for web_run
+    run7()#addational data, automatically evaluate with triple links set
 
 if __name__=='__main__':
     main()
