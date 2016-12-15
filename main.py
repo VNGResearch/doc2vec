@@ -625,7 +625,7 @@ train_percent = 0.6
 valid_percent = 0.2
 test_percent = 0.2
 #model_type = 'BEST.'
-model_type = 'biggest.'
+model_type = ''
 best_acc = -1
 #token_type = 'vi_token'#char, word, vi_token #TODO very slow, could not be used
 token_type = 'word'#char, word, vi_token
@@ -858,12 +858,12 @@ def run7():
     doc2vec = Doc2Vec(dm=0, size=100, min_count=50)
     doc2vec.build_vocab(all_docs)
 
-    for rep in range(31):
+    for rep in range(7):
         print('===========================pass {}'.format(rep))
         all_docs = itertools.chain(zing_docs, docbao_docs, wiki_docs)
         #all_docs = itertools.chain(zing_docs, docbao_docs)
-        #doc2vec.train(all_docs, partial_train = True, shuffle=True)
-        doc2vec.train(all_docs,batch_size=40000, partial_train = True, shuffle=True)
+        doc2vec.train(all_docs, partial_train = True, shuffle=True)
+        #doc2vec.train(all_docs,batch_size=40000, partial_train = True, shuffle=True)
         #doc2vec.train(wiki_docs, batch_size=50000, partial_train=True, shuffle=False)
         if rep%3==0:
             print('=================automatic evaluation')

@@ -148,7 +148,9 @@ tokenize+stopwords: train 64.7; test 50.7
 
 
 ================================2 related, one not===========
-82%; 89%
+zing new only: 82%; 89%
+zing+docbao: 77.85%; FULL train: 83.84
+zing+docbao+wiki:77.40%; Full train: ??
 
 ================================kmeans===========
 Clustering...
@@ -157,3 +159,4 @@ Completeness: 0.611
 V-measure: 0.615
 Adjusted Rand-Index: 0.347
 Silhouette Coefficient: 0.039
+
