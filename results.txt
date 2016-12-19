@@ -150,7 +150,7 @@ tokenize+stopwords: train 64.7; test 50.7
 ================================2 related, one not===========
 zing new only: 82%; 89%
 zing+docbao: 77.85%; FULL train: 83.84
-zing+docbao+wiki:77.40%; Full train: ??
+zing+docbao+wiki:77.40%; Full train: 83.78
 
 ================================kmeans===========
 Clustering...

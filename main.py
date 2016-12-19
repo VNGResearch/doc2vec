@@ -817,11 +817,13 @@ def run6():
 
 def build_catdocs(zing_docs):
     cat_docs = defaultdict(list)
+    doc_words = {}
     for doc in zing_docs:
         tag = doc.tags[0]
         cat = doc.topic_id
         cat_docs[cat].append(tag)
-    return cat_docs
+        doc_words[tag] = doc.words
+    return cat_docs, doc_words
 
 def evaluate(doc2vec, cat_docs):
     N = 100000
@@ -846,28 +848,65 @@ def evaluate(doc2vec, cat_docs):
 
     print('Accuracy {}'.format(acc/float(N)))
 
+def evaluate_bow(doc2vec, cat_docs, doc_words):
+    N = 100000
+    max_cat = 59;
+    acc = 0
+    for i in range(N):
+        cat1, cat2 = random.sample(range(0, max_cat), 2)
+        doc1, doc2 = random.sample(cat_docs[cat1], 2)
+        doc3= random.sample(cat_docs[cat2], 1)[0]
+        vec1 = doc2vec.infer_docvec(doc_words[doc1])
+        vec2 = doc2vec.infer_docvec(doc_words[doc2])
+        vec3 = doc2vec.infer_docvec(doc_words[doc3])
+        cos12 = Similarity.cosine_similarity(vec1, vec2)
+        cos13 = Similarity.cosine_similarity(vec1, vec3)
+        cos23 = Similarity.cosine_similarity(vec2, vec3)
+
+        acc += 1 if cos12>cos13 and cos12>cos23 else 0
+        #'''
+        if i%10000==0:
+            print('---', i, acc)
+        #'''
+
+    print('Accuracy {}'.format(acc/float(N)))
+
 def run7():
     print('=============RUN 7 - adding data and automatic evaluation============')
     zing_docs = read_corpus(data_dir, 0, 1.0)
     docbao_docs = read_addational_corpus(docbao_data_dir, doc_id = 66511)
     wiki_docs = read_addational_corpus(wiki_data_dir, doc_id = 177817)
-    all_docs = itertools.chain(zing_docs, docbao_docs, wiki_docs)#used 1327381
+    #all_docs = itertools.chain(zing_docs, docbao_docs, wiki_docs)#used 1327381
     #all_docs = itertools.chain(zing_docs, docbao_docs)
-    cat_docs = build_catdocs(zing_docs)
+    all_docs = itertools.chain(zing_docs)
+    cat_docs, _ = build_catdocs(zing_docs)
 
-    doc2vec = Doc2Vec(dm=0, size=100, min_count=50)
+    doc2vec = Doc2Vec(dm=1, size=100, min_count=50)
     doc2vec.build_vocab(all_docs)
 
     for rep in range(7):
         print('===========================pass {}'.format(rep))
-        all_docs = itertools.chain(zing_docs, docbao_docs, wiki_docs)
+        #all_docs = itertools.chain(zing_docs, docbao_docs, wiki_docs)
         #all_docs = itertools.chain(zing_docs, docbao_docs)
+        all_docs = itertools.chain(zing_docs)
         doc2vec.train(all_docs, partial_train = True, shuffle=True)
         #doc2vec.train(all_docs,batch_size=40000, partial_train = True, shuffle=True)
         #doc2vec.train(wiki_docs, batch_size=50000, partial_train=True, shuffle=False)
         if rep%3==0:
             print('=================automatic evaluation')
             evaluate(doc2vec, cat_docs)
+
+def run8():
+    print('=============RUN 8 - automatic evaluation with bag of word============')
+    zing_docs = read_corpus(data_dir, 0, 1.0)
+    train = zing_docs
+
+    doc2vec = BWDoc2Vec()
+    print('===================fit dwdoc2vec---')
+    doc2vec.train(train, tfidf=False)
+    print('===================automatic evaluate dwdoc2vec---')
+    cat_docs, doc_words = build_catdocs(zing_docs)
+    evaluate_bow(doc2vec, cat_docs, doc_words) 
 
 def main():
     #run1()#GridSearch for hyperparameters for nueral-based Doc2Vec
@@ -877,6 +916,7 @@ def main():
     #run5()#for NN classifier
     #run6()#crate and save the best model for web_run
     run7()#addational data, automatically evaluate with triple links set
+    #run8()#automatic evaluation with BagOfWords
 
 if __name__=='__main__':
     main()
